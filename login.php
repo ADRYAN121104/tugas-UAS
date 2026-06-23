@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['customer']['email']        = $user['email'];
                 $_SESSION['customer']['role']         = $user['role'];
                 set_flash('sukses', 'Selamat datang, ' . $user['nama_lengkap'] . '!');
-                header('Location: customer/dashboard.php');
+                header('Location: customer/booking_saya.php');
             }
             exit;
         } else {
@@ -51,13 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Login - Sistem KPR Perumahan</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
 </head>
 <body>
 <div class="auth-wrap">
     <div class="auth-card">
         <div style="text-align:center;margin-bottom:24px;">
-            <div style="width:60px;height:60px;background:linear-gradient(135deg,#2563eb,#6366f1);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;">🏠</div>
+            <div style="width:60px;height:60px;background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;">🏠</div>
             <h2>Masuk ke Akun</h2>
             <p>Sistem KPR Perumahan</p>
         </div>

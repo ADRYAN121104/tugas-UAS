@@ -15,7 +15,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .csb-brand strong{color:#fff;font-size:15px;font-weight:800;display:block;}
 .csb-brand small{color:#94a3b8;font-size:11px;}
 .csb-profile{padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);}
-.csb-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0;}
+.csb-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0;}
 .csb-profile-info strong{color:#fff;font-size:13px;display:block;font-weight:700;}
 .csb-profile-info small{color:#94a3b8;font-size:11px;}
 .csb-menu{padding:10px 0;flex:1;}
@@ -33,7 +33,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .ccontent{padding:28px;}
 
 /* WELCOME BANNER */
-.welcome-banner{background:linear-gradient(135deg,#1d4ed8,#2563eb,#6366f1);border-radius:var(--radius);padding:26px 30px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden;}
+.welcome-banner{background:linear-gradient(135deg,#1e3a8a,#2563eb,#3b82f6);border-radius:var(--radius);padding:26px 30px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden;}
 .welcome-banner::after{content:'🏠';position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:60px;opacity:.1;}
 .welcome-banner h2{font-size:21px;font-weight:800;}
 .welcome-banner p{opacity:.85;font-size:14px;margin-top:4px;}

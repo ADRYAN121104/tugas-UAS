@@ -91,7 +91,7 @@ $list_bank = $db->query("SELECT * FROM bank ORDER BY bunga_kpr ASC")->fetchAll()
 .sim-result h3{font-size:18px;font-weight:800;margin-bottom:20px;color:#0f172a;}
 .sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .sim-item{background:#f8fafc;border-radius:10px;padding:14px;}
-.sim-item.highlight{background:linear-gradient(135deg,#2563eb,#6366f1);color:#fff;grid-column:span 2;}
+.sim-item.highlight{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;grid-column:span 2;}
 .sim-label{display:block;font-size:12px;color:#94a3b8;margin-bottom:4px;}
 .sim-item.highlight .sim-label{color:rgba(255,255,255,.7);}
 .sim-value{font-size:15px;font-weight:700;color:#0f172a;}

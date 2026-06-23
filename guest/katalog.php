@@ -71,7 +71,7 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY nama_perumahan")-
         </div>
     <?php else: ?>
     <div class="grid-3">
-        <?php $grad=['linear-gradient(135deg,#1e3a8a,#2563eb)','linear-gradient(135deg,#064e3b,#10b981)','linear-gradient(135deg,#7c2d12,#f59e0b)','linear-gradient(135deg,#4c1d95,#8b5cf6)'];
+        <?php $grad=['linear-gradient(135deg,#1e3a8a,#2563eb)','linear-gradient(135deg,#1e293b,#334155)','linear-gradient(135deg,#1e3a8a,#3b82f6)','linear-gradient(135deg,#0f172a,#3b82f6)'];
         foreach ($units as $i => $u): ?>
         <div class="kartu">
             <div class="kartu-img" style="background:#f1f5f9; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">

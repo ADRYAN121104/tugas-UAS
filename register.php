@@ -41,13 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Daftar Akun - Sistem KPR Perumahan</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
 </head>
 <body>
 <div class="auth-wrap">
     <div class="auth-card" style="max-width:500px;">
         <div style="text-align:center;margin-bottom:24px;">
-            <div style="width:60px;height:60px;background:linear-gradient(135deg,#10b981,#2563eb);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;">📝</div>
+            <div style="width:60px;height:60px;background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;">📝</div>
             <h2>Buat Akun Baru</h2>
             <p>Daftar sebagai customer untuk mulai booking</p>
         </div>

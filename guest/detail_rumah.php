@@ -8,7 +8,7 @@ $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: katalog.php'); exit; }
 
 $stmt = $db->prepare("SELECT r.*,p.nama_perumahan,p.alamat,p.deskripsi as deskripsi_komplek,p.maps_link,
-    t.nama_tipe,t.luas_tanah,t.luas_bangunan,t.jumlah_kamar,t.jumlah_kamar_mandi,t.harga,t.deskripsi as deskripsi_tipe,t.foto
+    t.nama_tipe,t.luas_tanah,t.luas_bangunan,t.jumlah_kamar,t.jumlah_kamar_mandi,t.harga,t.deskripsi as deskripsi_tipe,t.foto,t.id_tipe
     FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan JOIN tipe_rumah t ON r.id_tipe=t.id_tipe WHERE r.id_rumah=?");
 $stmt->execute([$id]);
 $unit = $stmt->fetch();
@@ -29,6 +29,22 @@ if (sudah_login() && role_user() === 'customer') {
     $bcek->execute([id_user(), $id]);
     $user_booking = $bcek->fetch();
 }
+
+// Ambil galeri foto dari database
+$gstmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ?");
+$gstmt->execute([$id]);
+$galeri_db = $gstmt->fetchAll(PDO::FETCH_COLUMN);
+// Jika galeri kosong, kita gunakan fallback default gambar interior & kitchen yang baru saja digenerate
+$galeri = !empty($galeri_db) ? $galeri_db : ['interior.png', 'kitchen.png'];
+
+// Ambil denah dari database
+$dstmt = $db->prepare("SELECT gambar_denah FROM denah_rumah WHERE id_tipe = ?");
+$dstmt->execute([$unit['id_tipe']]);
+$denah_db = $dstmt->fetchAll(PDO::FETCH_COLUMN);
+// Jika kosong, gunakan fallback default gambar denah yang baru saja digenerate
+$denah = !empty($denah_db) ? $denah_db[0] : 'denah_sample.png';
+
+$dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/' . $denah : (file_exists('../uploads/denah_rumah/' . $denah) ? '../uploads/denah_rumah/' . $denah : '../uploads/tipe_rumah/' . $denah);
 ?>
 <main class="container" style="padding:40px 24px 60px;">
     <div class="breadcrumb" style="margin-bottom:24px;">
@@ -40,20 +56,51 @@ if (sudah_login() && role_user() === 'customer') {
     <div style="display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start;" id="detail-grid">
         <!-- Kiri -->
         <div>
-            <div style="height:300px;background:#f1f5f9;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;position:relative;overflow:hidden;border:1px solid #e2e8f0;">
+            <!-- Main Photo Area -->
+            <div style="height:380px;background:#f1f5f9;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;overflow:hidden;border:1px solid #e2e8f0;" id="mainImageContainer">
                 <?php if ($unit['foto'] && file_exists('../uploads/tipe_rumah/' . $unit['foto'])): ?>
-                    <img src="../uploads/tipe_rumah/<?= htmlspecialchars($unit['foto']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                    <img id="mainImage" src="../uploads/tipe_rumah/<?= htmlspecialchars($unit['foto']) ?>" style="width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease;">
                 <?php else: ?>
-                    <div style="background:linear-gradient(135deg,#0f172a,#1e3a8a); width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:80px; color:#fff;">🏠</div>
+                    <img id="mainImage" src="../uploads/tipe_rumah/interior.png" style="width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease;">
                 <?php endif; ?>
                 <span style="position:absolute;top:16px;left:16px;background:<?= $unit['status']==='tersedia'?'#10b981':'#ef4444' ?>;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;z-index:2;">
                     <?= $unit['status']==='tersedia' ? '✅ Tersedia' : ($unit['status']==='booking' ? '🔒 Dibooking' : '🏠 Terjual') ?>
                 </span>
             </div>
 
+            <!-- Thumbnail Gallery Grid -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
+                <!-- Main Image Thumbnail -->
+                <div class="thumb-item active" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid #2563eb;transition:.2s;background:#fff;display:flex;align-items:center;justify-content:center;">
+                    <?php if ($unit['foto'] && file_exists('../uploads/tipe_rumah/' . $unit['foto'])): ?>
+                        <img src="../uploads/tipe_rumah/<?= htmlspecialchars($unit['foto']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                    <?php else: ?>
+                        <img src="../uploads/tipe_rumah/interior.png" style="width:100%; height:100%; object-fit:cover; display:none;">
+                        <span style="font-size:24px;">🏠</span>
+                    <?php endif; ?>
+                </div>
+                <!-- Additional Images -->
+                <?php foreach ($galeri as $g): 
+                    $src = file_exists('../uploads/tipe_rumah/' . $g) ? '../uploads/tipe_rumah/' . $g : (file_exists('../uploads/galeri_rumah/' . $g) ? '../uploads/galeri_rumah/' . $g : '../uploads/tipe_rumah/' . $g);
+                ?>
+                    <div class="thumb-item" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid transparent;transition:.2s;">
+                        <img src="<?= $src ?>" style="width:100%; height:100%; object-fit:cover;">
+                    </div>
+                <?php endforeach; ?>
+                
+                <!-- Floor Plan / Denah Thumbnail -->
+                <?php if ($denah): ?>
+                    <div class="thumb-item" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid transparent;transition:.2s;position:relative;">
+                        <img src="<?= $dsrc ?>" style="width:100%; height:100%; object-fit:cover;">
+                        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:1px;">DENAH</div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
             <h1 style="font-size:26px;font-weight:800;margin-bottom:6px;"><?= htmlspecialchars($unit['nama_perumahan']) ?></h1>
             <p style="color:#2563eb;font-weight:700;margin-bottom:16px;">📍 <?= htmlspecialchars($unit['alamat']) ?> &nbsp;·&nbsp; Blok <?= htmlspecialchars($unit['blok'].' - '.$unit['kode_unit']) ?></p>
 
+            <!-- Specs Grid -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                 <?php $specs=[['📐',$unit['luas_tanah'].' m²','Luas Tanah'],['🏗️',$unit['luas_bangunan'].' m²','Luas Bangunan'],['🛏️',$unit['jumlah_kamar'].' Kamar','Kamar Tidur'],['🚿',$unit['jumlah_kamar_mandi'].' Kamar','Kamar Mandi']];
                 foreach($specs as $s): ?>
@@ -70,9 +117,17 @@ if (sudah_login() && role_user() === 'customer') {
                 <p style="color:#64748b;line-height:1.7;"><?= htmlspecialchars($unit['deskripsi_tipe'] ?? '') ?></p>
             </div>
 
-            <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e2e8f0;">
+            <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e2e8f0;margin-bottom:20px;">
                 <h3 style="font-size:17px;font-weight:800;margin-bottom:12px;">Tentang Komplek</h3>
                 <p style="color:#64748b;line-height:1.7;"><?= htmlspecialchars($unit['deskripsi_komplek'] ?? '') ?></p>
+            </div>
+
+            <!-- Floor Plan (Denah) Area -->
+            <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e2e8f0;">
+                <h3 style="font-size:17px;font-weight:800;margin-bottom:12px;">📐 Denah Rumah (Floor Plan)</h3>
+                <div style="background:#f8fafc;border-radius:10px;padding:20px;text-align:center;border:1px solid #e2e8f0;overflow:hidden;">
+                    <img src="<?= $dsrc ?>" style="max-width:100%;max-height:400px;border-radius:8px;object-fit:contain;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                </div>
             </div>
         </div>
 
@@ -153,5 +208,33 @@ if (sudah_login() && role_user() === 'customer') {
     </div>
     <?php endif; ?>
 </main>
-<style>@media(max-width:768px){#detail-grid{grid-template-columns:1fr!important;}}</style>
+<script>
+function changeMainImage(elem) {
+    // Reset borders
+    document.querySelectorAll('.thumb-item').forEach(item => {
+        item.style.borderColor = 'transparent';
+    });
+    // Set active border
+    elem.style.borderColor = '#2563eb';
+    // Get image source from thumbnail
+    const img = elem.querySelector('img');
+    if (img) {
+        const newSrc = img.getAttribute('src');
+        const mainImage = document.getElementById('mainImage');
+        // Fade out
+        mainImage.style.opacity = '0';
+        setTimeout(() => {
+            mainImage.setAttribute('src', newSrc);
+            // Fade in
+            mainImage.style.opacity = '1';
+        }, 150);
+    }
+}
+</script>
+<style>
+@media(max-width:768px){#detail-grid{grid-template-columns:1fr!important;}}
+.thumb-item:hover {
+    border-color: #93c5fd !important;
+}
+</style>
 <?php require_once '../includes/footer.php'; ?>

@@ -77,7 +77,7 @@ $total_perumahan = $db->query("SELECT COUNT(*) FROM perumahan")->fetchColumn();
             </div>
         <?php else: ?>
         <div class="grid-3">
-            <?php $grad=['linear-gradient(135deg,#0f172a,#1e3a8a)','linear-gradient(135deg,#064e3b,#10b981)','linear-gradient(135deg,#451a03,#f59e0b)','linear-gradient(135deg,#2e1065,#8b5cf6)'];
+            <?php $grad=['linear-gradient(135deg,#0f172a,#1e3a8a)','linear-gradient(135deg,#1e293b,#334155)','linear-gradient(135deg,#1e3a8a,#3b82f6)','linear-gradient(135deg,#0f172a,#3b82f6)'];
             foreach ($list_perumahan as $i => $p): ?>
             <div class="kartu">
                 <div class="kartu-img" style="background:<?= $grad[$i%4] ?>;">

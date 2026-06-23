@@ -17,7 +17,7 @@ img{max-width:100%;}
 .navbar{background:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.08);position:sticky;top:0;z-index:100;}
 .nav-container{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:65px;}
 .brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:var(--dark);}
-.brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--primary),#6366f1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.brand-icon{width:38px;height:38px;background:linear-gradient(135deg,#1e3a8a,var(--primary));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .nav-links{display:flex;align-items:center;gap:6px;list-style:none;}
 .nav-links a{padding:7px 14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--text);transition:.2s;}
 .nav-links a:hover{background:#f1f5f9;color:var(--primary);}
@@ -26,7 +26,7 @@ img{max-width:100%;}
 .hamburger{display:none;cursor:pointer;font-size:22px;background:none;border:none;color:var(--dark);}
 
 /* HERO */
-.hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 50%,#1d4ed8 100%);color:#fff;padding:80px 24px;text-align:center;}
+.hero{background:linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), url('../images/banner/hero-bg.jpg') no-repeat center center;background-size:cover;color:#fff;padding:100px 24px;text-align:center;}
 .hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.2;margin-bottom:16px;}
 .hero h1 span{color:var(--accent);}
 .hero p{font-size:18px;opacity:.85;margin-bottom:32px;max-width:600px;margin-left:auto;margin-right:auto;}
@@ -92,15 +92,70 @@ textarea.form-control{min-height:100px;resize:vertical;}
 .tabel tbody tr:hover{background:#f8fafc;}
 
 /* FOOTER */
-.footer{background:var(--dark);color:#94a3b8;padding:48px 24px 24px;}
-.footer-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:40px;}
-.footer-brand{font-size:20px;font-weight:800;color:#fff;margin-bottom:12px;}
-.footer h4{color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:14px;}
-.footer ul{list-style:none;}
-.footer ul li{margin-bottom:8px;}
-.footer ul li a{color:#94a3b8;font-size:14px;transition:.2s;}
-.footer ul li a:hover{color:#fff;}
-.footer-copy{max-width:1200px;margin:0 auto;border-top:1px solid #1e293b;padding-top:20px;text-align:center;font-size:13px;}
+.footer {
+  background: var(--dark);
+  color: #94a3b8;
+  padding: 30px 24px;
+  font-size: 13.5px;
+  border-top: 1px solid #1e293b;
+}
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.footer-top, .footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-top {
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 18px;
+}
+.footer-brand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.footer-contacts {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.footer-contacts span, .footer-contacts a {
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+.footer-contacts a:hover {
+  color: #fff;
+}
+.footer-links {
+  display: flex;
+  gap: 18px;
+}
+.footer-links a {
+  color: #94a3b8;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+.footer-links a:hover {
+  color: #fff;
+}
+.footer-copy {
+  color: #64748b;
+  font-size: 12.5px;
+}
 
 /* ALERT */
 .alert{padding:14px 18px;border-radius:9px;margin-bottom:18px;font-weight:600;font-size:14px;}
@@ -123,6 +178,18 @@ textarea.form-control{min-height:100px;resize:vertical;}
   .hero{padding:56px 24px;}
   .grid-3,.grid-2{grid-template-columns:1fr;}
   .form-row{grid-template-columns:1fr;}
-  .footer-grid{grid-template-columns:1fr;}
   .hero-stats{gap:28px;}
+  .footer-top, .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+  .footer-contacts {
+    justify-content: center;
+    gap: 12px;
+  }
+  .footer-links {
+    justify-content: center;
+    gap: 12px;
+  }
 }

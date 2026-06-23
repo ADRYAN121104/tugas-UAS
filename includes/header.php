@@ -11,7 +11,7 @@ $base = '/perumahan_kpr/';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($page_title) ? htmlspecialchars($page_title) : 'Sistem KPR Perumahan' ?></title>
     <meta name="description" content="<?= isset($page_desc) ? htmlspecialchars($page_desc) : 'Portal KPR Perumahan terpercaya - temukan rumah impian dan ajukan kredit dengan mudah.' ?>">
-    <link rel="stylesheet" href="<?= $base ?>assets/css/style.css">
+    <link rel="stylesheet" href="<?= $base ?>assets/css/style.css?v=<?= time() ?>">
 </head>
 <body>
 <nav class="navbar">
@@ -25,13 +25,13 @@ $base = '/perumahan_kpr/';
             <li><a href="<?= $base ?>index.php">Beranda</a></li>
             <li><a href="<?= $base ?>guest/katalog.php">Katalog</a></li>
             <li><a href="<?= $base ?>guest/simulasi_kpr.php">Simulasi KPR</a></li>
-            <li><a href="<?= $base ?>guest/tentang.php">Tentang</a></li>
-            <li><a href="<?= $base ?>guest/kontak.php">Kontak</a></li>
             <?php if (sudah_login()): ?>
                 <?php if (in_array(role_user(), ['admin','marketing'])): ?>
                     <li><a href="<?= $base ?>admin/dashboard.php">Panel Admin</a></li>
                 <?php else: ?>
-                    <li><a href="<?= $base ?>customer/dashboard.php">Dashboard</a></li>
+                    <li><a href="<?= $base ?>customer/booking_saya.php">Booking Saya</a></li>
+                    <li><a href="<?= $base ?>customer/status_kpr.php">Status KPR</a></li>
+                    <li><a href="<?= $base ?>customer/profil.php">Profil Saya</a></li>
                 <?php endif; ?>
                 <li><a href="<?= $base ?>logout.php" class="btn btn-outline btn-sm">Keluar</a></li>
             <?php else: ?>
