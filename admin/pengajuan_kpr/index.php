@@ -40,9 +40,10 @@ if ($action === 'update_status' && $id > 0 && $_SERVER['REQUEST_METHOD'] === 'PO
         if ($status_baru === 'akad_kredit' && $id_rumah) {
             $db->prepare("UPDATE rumah SET status = 'terjual' WHERE id_rumah = ?")->execute([$id_rumah]);
         }
-        // Jika status ditolak, kembalikan status rumah menjadi tersedia
+        // Jika status ditolak, kembalikan status rumah menjadi tersedia & batalkan booking terkonfirmasi terkait
         elseif ($status_baru === 'ditolak' && $id_rumah) {
             $db->prepare("UPDATE rumah SET status = 'tersedia' WHERE id_rumah = ?")->execute([$id_rumah]);
+            $db->prepare("UPDATE booking SET status_booking = 'dibatalkan' WHERE id_rumah = ? AND status_booking = 'dikonfirmasi'")->execute([$id_rumah]);
         }
 
         $db->commit();
