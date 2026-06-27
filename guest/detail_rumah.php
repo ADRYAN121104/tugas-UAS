@@ -129,7 +129,73 @@ $dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/
                     <img src="<?= $dsrc ?>" style="max-width:100%;max-height:400px;border-radius:8px;object-fit:contain;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
                 </div>
             </div>
+
+            <!-- ===== SIMULASI KPR INLINE ===== -->
+            <div style="background:linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);border-radius:16px;padding:28px;margin-top:20px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-30px;right:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.04);"></div>
+                <div style="position:absolute;bottom:-40px;left:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.03);"></div>
+                <div style="position:relative;z-index:1;">
+                    <h3 style="font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;">🧮 Simulasi Cicilan KPR</h3>
+                    <p style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:20px;">Estimasi cicilan untuk unit ini</p>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Harga Properti</label>
+                            <input type="text" id="sim_harga" value="<?= number_format($unit['harga'],0,',','.') ?>" readonly
+                                   style="width:100%;padding:10px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:rgba(255,255,255,.8);font-weight:700;font-size:13px;font-family:inherit;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Uang Muka / DP</label>
+                            <input type="text" id="sim_dp" placeholder="Contoh: 50.000.000"
+                                   style="width:100%;padding:10px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-family:inherit;outline:none;"
+                                   oninput="formatSimDP(this)" onkeyup="hitungSim()">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                        <div>
+                            <label style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Bunga / Tahun (%)</label>
+                            <input type="number" id="sim_bunga" value="7.5" min="0" max="30" step="0.1" onchange="hitungSim()" oninput="hitungSim()"
+                                   style="width:100%;padding:10px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-family:inherit;outline:none;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tenor Kredit</label>
+                            <select id="sim_tenor" onchange="hitungSim()"
+                                    style="width:100%;padding:10px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-family:inherit;outline:none;">
+                                <?php for($t=5;$t<=30;$t+=5): ?>
+                                <option value="<?= $t ?>" <?= $t==15?'selected':'' ?> style="background:#1e3a8a;"><?= $t ?> Tahun</option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Hasil -->
+                    <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:16px;">
+                        <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Cicilan Per Bulan</div>
+                        <div style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px;" id="sim_cicilan">-</div>
+                        <div id="sim_badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,99,235,.3);border:1px solid rgba(37,99,235,.4);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#93c5fd;margin-top:6px;">
+                            📈 Bunga 7.5% / Tahun · 15 Tahun
+                        </div>
+                        <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px;">
+                            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+                                <span style="color:rgba(255,255,255,.6);">Pinjaman Pokok</span>
+                                <span style="color:#fff;font-weight:700;" id="sim_pokok">-</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+                                <span style="color:rgba(255,255,255,.6);">Total Bunga</span>
+                                <span style="color:#fbbf24;font-weight:700;" id="sim_bunga_total">-</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:12.5px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08);">
+                                <span style="color:rgba(255,255,255,.6);">Total Pembayaran</span>
+                                <span style="color:#fff;font-weight:800;" id="sim_total">-</span>
+                            </div>
+                        </div>
+                        <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:12px;font-style:italic;">* Estimasi. Angka aktual tergantung kebijakan bank.</p>
+                    </div>
+                </div>
+            </div>
         </div>
+
+
 
         <!-- Kanan - Harga & Aksi -->
         <div style="position:sticky;top:80px;">
@@ -175,11 +241,54 @@ $dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/
             </div>
 
             <?php if ($unit['maps_link']): ?>
-            <div style="background:#fff;border-radius:12px;padding:18px;border:1px solid #e2e8f0;margin-top:16px;">
-                <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">📍 Lokasi</h4>
-                <a href="<?= htmlspecialchars($unit['maps_link']) ?>" target="_blank" class="btn btn-gray btn-block" style="justify-content:center;">🗺️ Buka Google Maps</a>
+            <div style="background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;margin-top:16px;">
+                <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+                    <h4 style="font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:6px;">📍 Lokasi di Google Maps</h4>
+                    <a href="<?= htmlspecialchars($unit['maps_link']) ?>" target="_blank" style="font-size:12px;color:#2563eb;font-weight:700;text-decoration:none;">Buka di Maps →</a>
+                </div>
+                <?php
+                // Coba embed Google Maps dari link yang ada
+                $maps_url = $unit['maps_link'];
+                // Ubah link google maps biasa ke embed
+                $embed_url = '';
+                if (strpos($maps_url, 'maps.google') !== false || strpos($maps_url, 'google.com/maps') !== false) {
+                    // Jika ada @lat,lng di URL
+                    if (preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $maps_url, $m)) {
+                        $embed_url = "https://maps.google.com/maps?q={$m[1]},{$m[2]}&z=16&output=embed";
+                    } elseif (strpos($maps_url, '/place/') !== false) {
+                        // link /place/
+                        $embed_url = str_replace('/maps/place/', '/maps/embed?pb=!1m18!1m12!1m3!1d1000&q=', $maps_url);
+                        $embed_url = $maps_url; // fallback
+                    } else {
+                        $embed_url = "https://maps.google.com/maps?q=" . urlencode($unit['alamat']) . "&z=15&output=embed";
+                    }
+                } else {
+                    $embed_url = "https://maps.google.com/maps?q=" . urlencode($unit['alamat']) . "&z=15&output=embed";
+                }
+                ?>
+                <iframe
+                    src="<?= htmlspecialchars($embed_url) ?>"
+                    width="100%" height="220"
+                    style="border:0;display:block;"
+                    allowfullscreen="" loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+            <?php else: ?>
+            <div style="background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;margin-top:16px;">
+                <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;">
+                    <h4 style="font-size:14px;font-weight:700;margin:0;">📍 Lokasi</h4>
+                </div>
+                <iframe
+                    src="https://maps.google.com/maps?q=<?= urlencode($unit['alamat']) ?>&z=14&output=embed"
+                    width="100%" height="220"
+                    style="border:0;display:block;"
+                    allowfullscreen="" loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
             </div>
             <?php endif; ?>
+
         </div>
     </div>
 
@@ -210,26 +319,68 @@ $dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/
 </main>
 <script>
 function changeMainImage(elem) {
-    // Reset borders
     document.querySelectorAll('.thumb-item').forEach(item => {
         item.style.borderColor = 'transparent';
     });
-    // Set active border
     elem.style.borderColor = '#2563eb';
-    // Get image source from thumbnail
     const img = elem.querySelector('img');
     if (img) {
         const newSrc = img.getAttribute('src');
         const mainImage = document.getElementById('mainImage');
-        // Fade out
         mainImage.style.opacity = '0';
         setTimeout(() => {
             mainImage.setAttribute('src', newSrc);
-            // Fade in
             mainImage.style.opacity = '1';
         }, 150);
     }
 }
+
+// ===== Simulasi KPR Inline =====
+function formatSimDP(el) {
+    const raw = el.value.replace(/\D/g, '');
+    el.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+    hitungSim();
+}
+
+function hitungSim() {
+    const hargaRaw = document.getElementById('sim_harga').value.replace(/\./g,'').replace(/,/g,'');
+    const dpRaw    = document.getElementById('sim_dp').value.replace(/\./g,'').replace(/,/g,'');
+    const bunga    = parseFloat(document.getElementById('sim_bunga').value) || 0;
+    const tenor    = parseInt(document.getElementById('sim_tenor').value);
+
+    const harga = parseFloat(hargaRaw) || 0;
+    const dp    = parseFloat(dpRaw) || 0;
+    const pokok = harga - dp;
+    const i     = (bunga / 100) / 12;   // bunga per bulan
+    const n     = tenor * 12;            // total bulan
+
+    // Formula annuity
+    let cicilan;
+    if (i === 0 || pokok <= 0) {
+        cicilan = pokok > 0 && n > 0 ? pokok / n : 0;
+    } else {
+        cicilan = pokok * i * Math.pow(1+i,n) / (Math.pow(1+i,n) - 1);
+    }
+    cicilan = Math.round(cicilan);
+
+    const totalBayar = cicilan * n;
+    const totalBunga = totalBayar - pokok;
+
+    const fmt = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+
+    document.getElementById('sim_cicilan').textContent = cicilan > 0 ? fmt(cicilan) : 'Rp 0';
+    document.getElementById('sim_pokok').textContent   = pokok > 0 ? fmt(pokok) : '-';
+    document.getElementById('sim_bunga_total').textContent = totalBunga > 0 ? fmt(totalBunga) : '-';
+    document.getElementById('sim_total').textContent   = totalBayar > 0 ? fmt(totalBayar) : '-';
+
+    // Update badge bunga
+    const badge = document.getElementById('sim_badge');
+    if (badge) badge.textContent = `📈 Bunga ${bunga}% / Tahun · ${tenor} Tahun`;
+}
+
+// Jalankan saat halaman load
+hitungSim();
+
 </script>
 <style>
 @media(max-width:768px){#detail-grid{grid-template-columns:1fr!important;}}

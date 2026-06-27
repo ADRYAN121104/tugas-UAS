@@ -1,5 +1,5 @@
 // assets/js/simulasi_kpr.js
-// Kalkulator Simulasi KPR
+// Kalkulator Simulasi KPR — Annuity Formula (real calculation)
 
 document.addEventListener('DOMContentLoaded', function () {
     const formSim  = document.getElementById('formSimulasi');
@@ -19,61 +19,61 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dp >= harga) { alert('Uang muka tidak boleh melebihi harga properti.'); return; }
 
         const pokok = harga - dp;
-        const i     = (bunga / 100) / 12;
-        const n     = tenor * 12;
-        let cicilan;
+        const i     = (bunga / 100) / 12;  // bunga per bulan
+        const n     = tenor * 12;           // total bulan
 
-        if (i === 0) { cicilan = pokok / n; }
-        else { cicilan = pokok * i * Math.pow(1+i,n) / (Math.pow(1+i,n) - 1); }
+        // Hitung cicilan annuity
+        let cicilan;
+        if (i === 0) {
+            cicilan = pokok / n;
+        } else {
+            cicilan = pokok * i * Math.pow(1+i,n) / (Math.pow(1+i,n) - 1);
+        }
+        cicilan = Math.round(cicilan);
 
         const totalBayar = cicilan * n;
         const totalBunga = totalBayar - pokok;
 
         hasilDiv.innerHTML = `
-            <div class="sim-result">
+            <div class="sim-result-card">
                 <h3>📊 Hasil Simulasi KPR</h3>
-                <div class="sim-grid">
-                    <div class="sim-item">
-                        <span class="sim-label">Harga Properti</span>
-                        <span class="sim-value">${formatRupiah(harga)}</span>
+                <div class="sim-cicilan-label">Cicilan Per Bulan</div>
+                <div class="sim-cicilan-val">${formatRupiah(cicilan)}</div>
+                <div class="sim-cicilan-badge">📈 Bunga ${bunga}% / Tahun · ${tenor} Tahun</div>
+                <div class="sim-rows">
+                    <div class="sim-row">
+                        <span class="sim-row-label">Harga Properti</span>
+                        <span class="sim-row-val">${formatRupiah(harga)}</span>
                     </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Uang Muka (DP)</span>
-                        <span class="sim-value">${formatRupiah(dp)} (${((dp/harga)*100).toFixed(1)}%)</span>
+                    <div class="sim-row">
+                        <span class="sim-row-label">Uang Muka (DP)</span>
+                        <span class="sim-row-val">${formatRupiah(dp)} (${((dp/harga)*100).toFixed(1)}%)</span>
                     </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Pinjaman Pokok</span>
-                        <span class="sim-value">${formatRupiah(pokok)}</span>
+                    <div class="sim-row">
+                        <span class="sim-row-label">Pinjaman Pokok</span>
+                        <span class="sim-row-val">${formatRupiah(pokok)}</span>
                     </div>
-                    <div class="sim-item highlight">
-                        <span class="sim-label">Cicilan / Bulan</span>
-                        <span class="sim-value big">${formatRupiah(Math.round(cicilan))}</span>
+                    <div class="sim-row">
+                        <span class="sim-row-label">Tenor Kredit</span>
+                        <span class="sim-row-val">${tenor} Tahun (${n} bulan)</span>
                     </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Total Bunga</span>
-                        <span class="sim-value">${formatRupiah(Math.round(totalBunga))}</span>
+                    <div class="sim-row">
+                        <span class="sim-row-label">Total Bunga</span>
+                        <span class="sim-row-val">${formatRupiah(totalBunga)}</span>
                     </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Total Pembayaran</span>
-                        <span class="sim-value">${formatRupiah(Math.round(totalBayar))}</span>
-                    </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Tenor</span>
-                        <span class="sim-value">${tenor} Tahun (${n} Bulan)</span>
-                    </div>
-                    <div class="sim-item">
-                        <span class="sim-label">Bunga per Tahun</span>
-                        <span class="sim-value">${bunga}%</span>
+                    <div class="sim-row">
+                        <span class="sim-row-label">Total Pembayaran</span>
+                        <span class="sim-row-val">${formatRupiah(totalBayar)}</span>
                     </div>
                 </div>
-                <p class="sim-note">* Simulasi ini bersifat estimasi. Cicilan aktual dapat berbeda sesuai kebijakan bank.</p>
+                <p class="sim-note">* Estimasi berdasarkan bunga flat. Angka aktual tergantung kebijakan bank.</p>
             </div>
         `;
         hasilDiv.style.display = 'block';
         hasilDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    // Format angka input
+    // Format angka input otomatis
     ['harga','dp'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;

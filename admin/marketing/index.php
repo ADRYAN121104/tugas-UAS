@@ -43,17 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'tambah') {
                 if (empty($pass)) {
                     $error = 'Password wajib diisi untuk akun baru.';
+                } elseif (strlen($pass) < 6) {
+                    $error = 'Password minimal 6 karakter.';
                 } else {
+                    $hash = password_hash($pass, PASSWORD_DEFAULT);
                     $stmt = $db->prepare("INSERT INTO users (nama_lengkap, email, password, no_hp, role) VALUES (?, ?, ?, ?, 'marketing')");
-                    $stmt->execute([$nama, $email, $pass, $no_hp]);
+                    $stmt->execute([$nama, $email, $hash, $no_hp]);
                     set_flash('sukses', 'Akun marketing baru berhasil ditambahkan.');
                     header('Location: index.php');
                     exit;
                 }
             } elseif ($action === 'edit' && $id > 0) {
                 if (!empty($pass)) {
+                    $hash = password_hash($pass, PASSWORD_DEFAULT);
                     $stmt = $db->prepare("UPDATE users SET nama_lengkap = ?, email = ?, password = ?, no_hp = ? WHERE id_user = ? AND role = 'marketing'");
-                    $stmt->execute([$nama, $email, $pass, $no_hp, $id]);
+                    $stmt->execute([$nama, $email, $hash, $no_hp, $id]);
                 } else {
                     $stmt = $db->prepare("UPDATE users SET nama_lengkap = ?, email = ?, no_hp = ? WHERE id_user = ? AND role = 'marketing'");
                     $stmt->execute([$nama, $email, $no_hp, $id]);

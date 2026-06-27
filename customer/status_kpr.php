@@ -9,7 +9,9 @@ $id_pengajuan = (int)($_GET['id'] ?? 0);
 
 // Ambil semua pengajuan KPR milik user (termasuk alamat & maps_link)
 $all = $db->prepare("
-    SELECT pk.*, p.nama_perumahan, p.alamat, p.maps_link, b.nama_bank, r.blok, r.kode_unit, t.nama_tipe, t.harga 
+    SELECT pk.*, p.nama_perumahan, p.alamat, p.maps_link,
+           b.nama_bank, b.bunga_kpr,
+           r.blok, r.kode_unit, t.nama_tipe, t.harga 
     FROM pengajuan_kpr pk 
     JOIN rumah r ON pk.id_rumah = r.id_rumah 
     JOIN perumahan p ON r.id_perumahan = p.id_perumahan 

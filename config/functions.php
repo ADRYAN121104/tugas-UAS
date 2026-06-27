@@ -17,9 +17,9 @@ function format_datetime($t) {
 
 function hitung_cicilan($harga, $dp, $bunga_persen, $tenor_tahun) {
     $pokok = $harga - $dp;
-    $i = ($bunga_persen / 100) / 12;
-    $n = $tenor_tahun * 12;
-    if ($i == 0) return $pokok / $n;
+    $i = ($bunga_persen / 100) / 12;  // bunga per bulan
+    $n = $tenor_tahun * 12;            // jumlah bulan
+    if ($i == 0 || $n == 0) return $n > 0 ? round($pokok / $n) : 0;
     return round($pokok * $i * pow(1+$i,$n) / (pow(1+$i,$n)-1));
 }
 
