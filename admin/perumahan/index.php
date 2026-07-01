@@ -152,7 +152,83 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
                                     <?php else: $no=1; foreach($list_perumahan as $p): ?>
                                         <tr>
                                             <td><?= $no++ ?></td>
-                                            <td><b><?= htmlspecialchars($p['nama_perumahan']) ?></b></td>
+                                            <td>
+                                                <div style="font-size:15px; font-weight:700; color:var(--text);"><?= htmlspecialchars($p['nama_perumahan']) ?></div>
+                                                
+                                                <!-- List of houses inside this complex -->
+                                                <div style="margin-top:12px; border-top:1px dashed var(--border); padding-top:10px;">
+                                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                                                        <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">🏡 Unit Rumah Terdaftar:</span>
+                                                    </div>
+                                                    
+                                                    <?php
+                                                    // Fetch units for this perumahan
+                                                    $units_stmt = $db->prepare("
+                                                         SELECT r.* 
+                                                         FROM rumah r 
+                                                         WHERE r.id_perumahan = ?
+                                                         ORDER BY r.blok, r.kode_unit
+                                                    ");
+                                                    $units_stmt->execute([$p['id_perumahan']]);
+                                                    $units = $units_stmt->fetchAll();
+                                                    
+                                                    if (empty($units)):
+                                                    ?>
+                                                        <span style="font-size:12px; color:var(--muted); font-style:italic;">Belum ada unit rumah terdaftar untuk komplek ini.</span>
+                                                    <?php else: ?>
+                                                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; margin-top:6px;">
+                                                            <?php foreach($units as $u): ?>
+                                                                <?php
+                                                                // Fetch first photo from galeri_rumah if exists, otherwise fallback to unit foto
+                                                                $foto_src = '';
+                                                                $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
+                                                                $galeri_stmt->execute([$u['id_rumah']]);
+                                                                $gf = $galeri_stmt->fetchColumn();
+                                                                if ($gf && file_exists('../../uploads/galeri_rumah/' . $gf)) {
+                                                                    $foto_src = '../../uploads/galeri_rumah/' . $gf;
+                                                                } elseif ($u['foto'] && file_exists('../../uploads/tipe_rumah/' . $u['foto'])) {
+                                                                    $foto_src = '../../uploads/tipe_rumah/' . $u['foto'];
+                                                                }
+                                                                ?>
+                                                                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:8px; display:flex; gap:10px; align-items:center; position:relative; transition:var(--tr);">
+                                                                    <!-- Foto Rumah -->
+                                                                    <?php if($foto_src): ?>
+                                                                        <img src="<?= $foto_src ?>" style="width:50px; height:50px; object-fit:cover; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.1);">
+                                                                    <?php else: ?>
+                                                                        <div style="width:50px; height:50px; background:#e2e8f0; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px;">🏠</div>
+                                                                    <?php endif; ?>
+                                                                    
+                                                                    <!-- Detail Unit -->
+                                                                    <div style="flex:1; min-width:0;">
+                                                                        <div style="font-size:12.5px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                                                            Blok <?= htmlspecialchars($u['blok']) ?> - <?= htmlspecialchars($u['kode_unit']) ?>
+                                                                        </div>
+                                                                        <div style="font-size:11px; color:var(--muted);"><?= htmlspecialchars($u['nama_tipe']) ?></div>
+                                                                        <div style="font-size:11.5px; font-weight:700; color:var(--success);"><?= format_rupiah($u['harga']) ?></div>
+                                                                        
+                                                                        <!-- Status Badge -->
+                                                                        <?php 
+                                                                        $status_bg = 'rgba(16,185,129,0.1)'; $status_col = '#10b981';
+                                                                        if ($u['status'] === 'booking') { $status_bg = 'rgba(245,158,11,0.1)'; $status_col = '#f59e0b'; }
+                                                                        elseif ($u['status'] === 'terjual') { $status_bg = 'rgba(239,68,68,0.1)'; $status_col = '#ef4444'; }
+                                                                        ?>
+                                                                        <span style="display:inline-block; font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:4px; background:<?= $status_bg ?>; color:<?= $status_col ?>; margin-top:4px;">
+                                                                            <?= ucfirst($u['status']) ?>
+                                                                        </span>
+                                                                    </div>
+                                                                    
+                                                                    <!-- Actions (Only Edit) -->
+                                                                    <div style="display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+                                                                        <a href="../rumah/index.php?action=edit&id=<?= $u['id_rumah'] ?>&redirect=../perumahan/index.php" class="btn btn-warning" style="padding:4px 6px; font-size:10px; border-radius:4px; display:flex; align-items:center; justify-content:center; height:auto; width:auto; line-height:1;" title="Edit Unit">
+                                                                            ✏️
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
                                             <td><?= htmlspecialchars($p['alamat']) ?></td>
                                             <td>
                                                 <?php if($p['maps_link']): ?>

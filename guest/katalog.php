@@ -7,23 +7,19 @@ require_once '../includes/header.php';
 
 $id_perumahan = (int)($_GET['id'] ?? 0);
 $search       = trim($_GET['s'] ?? '');
-$tipe_filter  = (int)($_GET['tipe'] ?? 0);
 $page         = max(1, (int)($_GET['page'] ?? 1));
 $per_page     = 9;
 $offset       = ($page - 1) * $per_page;
 
-// Ambil semua tipe untuk filter
-$list_tipe       = $db->query("SELECT * FROM tipe_rumah ORDER BY harga ASC")->fetchAll();
 $list_perumahan  = $db->query("SELECT * FROM perumahan ORDER BY nama_perumahan")->fetchAll();
 
 // Query total untuk pagination
 $where = "WHERE r.status = 'tersedia'";
 $params = [];
 if ($id_perumahan) { $where .= " AND r.id_perumahan=?"; $params[] = $id_perumahan; }
-if ($tipe_filter)  { $where .= " AND r.id_tipe=?"; $params[] = $tipe_filter; }
-if ($search)       { $where .= " AND (p.nama_perumahan LIKE ? OR t.nama_tipe LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($search)       { $where .= " AND (p.nama_perumahan LIKE ? OR r.nama_tipe LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
 
-$count_stmt = $db->prepare("SELECT COUNT(*) FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan JOIN tipe_rumah t ON r.id_tipe=t.id_tipe $where");
+$count_stmt = $db->prepare("SELECT COUNT(*) FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan $where");
 $count_stmt->execute($params);
 $total_units  = $count_stmt->fetchColumn();
 $total_pages  = max(1, ceil($total_units / $per_page));
@@ -31,23 +27,23 @@ $page         = min($page, $total_pages);
 $offset       = ($page - 1) * $per_page;
 
 // Query unit dengan limit
-$stmt = $db->prepare("SELECT r.*,p.nama_perumahan,p.alamat,t.nama_tipe,t.harga,t.luas_tanah,t.luas_bangunan,t.jumlah_kamar,t.jumlah_kamar_mandi,t.foto
-    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan JOIN tipe_rumah t ON r.id_tipe=t.id_tipe
-    $where ORDER BY t.harga ASC LIMIT $per_page OFFSET $offset");
+$stmt = $db->prepare("SELECT r.*, p.nama_perumahan, p.alamat
+    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan
+    $where ORDER BY r.harga ASC LIMIT $per_page OFFSET $offset");
 $stmt->execute($params);
 $units = $stmt->fetchAll();
 
 // Build query string untuk pagination
-$query_base = http_build_query(array_filter(['id'=>$id_perumahan,'tipe'=>$tipe_filter,'s'=>$search]));
+$query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]));
 ?>
 
-<main class="container" style="padding:40px 24px 60px;">
+<main class="container-wide" style="padding:40px 24px 60px;">
     <?php tampil_flash(); ?>
 
     <!-- Header -->
     <div style="margin-bottom:28px;">
         <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(37,99,235,.07);color:#2563eb;padding:5px 14px;border-radius:50px;font-size:12.5px;font-weight:700;margin-bottom:12px;border:1px solid rgba(37,99,235,.15);">🏠 Katalog Properti</div>
-        <h1 class="section-title">Temukan Unit Impian Anda</h1>
+        <h1 class="section-title section-title-gradient">Temukan Unit Impian Anda</h1>
         <p class="section-sub">Tersedia <?= $total_units ?> unit siap dipesan dari berbagai komplek pilihan</p>
     </div>
 
@@ -60,15 +56,6 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'tipe'=>$tipe_f
                     <option value="">-- Semua Komplek --</option>
                     <?php foreach($list_perumahan as $p): ?>
                     <option value="<?= $p['id_perumahan'] ?>" <?= $id_perumahan==$p['id_perumahan']?'selected':'' ?>><?= htmlspecialchars($p['nama_perumahan']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div style="flex:1;min-width:160px;">
-                <label style="font-size:11.5px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">Tipe Rumah</label>
-                <select name="tipe" class="form-control">
-                    <option value="">-- Semua Tipe --</option>
-                    <?php foreach($list_tipe as $t): ?>
-                    <option value="<?= $t['id_tipe'] ?>" <?= $tipe_filter==$t['id_tipe']?'selected':'' ?>><?= htmlspecialchars($t['nama_tipe']) ?> — <?= format_rupiah($t['harga']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -98,14 +85,26 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'tipe'=>$tipe_f
             <a href="katalog.php" class="btn btn-primary" style="margin-top:16px;">Lihat Semua Unit</a>
         </div>
     <?php else: ?>
-    <div class="grid-3">
+    <div class="grid-4">
         <?php
         $grad = ['linear-gradient(135deg,#1e3a8a,#2563eb)','linear-gradient(135deg,#1e293b,#334155)','linear-gradient(135deg,#1e3a8a,#3b82f6)','linear-gradient(135deg,#0f172a,#3b82f6)'];
         foreach ($units as $i => $u): ?>
         <div class="kartu">
             <div class="kartu-img" style="background:#f1f5f9;overflow:hidden;">
-                <?php if ($u['foto'] && file_exists('../uploads/tipe_rumah/' . $u['foto'])): ?>
-                    <img src="../uploads/tipe_rumah/<?= htmlspecialchars($u['foto']) ?>" style="width:100%;height:100%;object-fit:cover;">
+                <?php
+                // Fetch first photo from galeri_rumah if exists, otherwise fallback to tipe_rumah.foto
+                $card_foto = '';
+                $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
+                $galeri_stmt->execute([$u['id_rumah']]);
+                $gf = $galeri_stmt->fetchColumn();
+                if ($gf && file_exists('../uploads/galeri_rumah/' . $gf)) {
+                    $card_foto = '../uploads/galeri_rumah/' . $gf;
+                } elseif ($u['foto'] && file_exists('../uploads/tipe_rumah/' . $u['foto'])) {
+                    $card_foto = '../uploads/tipe_rumah/' . $u['foto'];
+                }
+                ?>
+                <?php if ($card_foto): ?>
+                    <img src="<?= $card_foto ?>" style="width:100%;height:100%;object-fit:cover;">
                 <?php else: ?>
                     <div style="background:<?= $grad[$i%4] ?>;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:60px;">🏠</div>
                 <?php endif; ?>

@@ -7,15 +7,41 @@ require_once '../../includes/sidebar_admin.php';
 
 $action = $_GET['action'] ?? '';
 $id = (int)($_GET['id'] ?? 0);
+$redirect = $_GET['redirect'] ?? $_POST['redirect'] ?? 'index.php';
 
-// Proses Hapus
+// Proses Hapus - Dibatasi
 if ($action === 'hapus' && $id > 0) {
+    set_flash('gagal', 'Fitur menghapus unit dinonaktifkan sementara.');
+    header('Location: ' . $redirect);
+    exit;
+}
+
+// Proses Tambah - Dibatasi
+if ($action === 'tambah') {
+    set_flash('gagal', 'Fitur menambah unit baru dinonaktifkan sementara.');
+    header('Location: index.php');
+    exit;
+}
+
+// Proses Hapus Foto Galeri
+if ($action === 'hapus_foto' && $id > 0) {
     try {
-        $stmt = $db->prepare("DELETE FROM rumah WHERE id_rumah = ?");
+        $stmt = $db->prepare("SELECT * FROM galeri_rumah WHERE id_galeri = ?");
         $stmt->execute([$id]);
-        set_flash('sukses', 'Data unit rumah berhasil dihapus.');
+        $g = $stmt->fetch();
+        if ($g) {
+            $id_rumah = $g['id_rumah'];
+            $file_path = '../../uploads/galeri_rumah/' . $g['foto'];
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+            $db->prepare("DELETE FROM galeri_rumah WHERE id_galeri = ?")->execute([$id]);
+            set_flash('sukses', 'Foto galeri berhasil dihapus.');
+            header("Location: index.php?action=edit&id=" . $id_rumah);
+            exit;
+        }
     } catch (PDOException $e) {
-        set_flash('gagal', 'Gagal menghapus unit. Data ini mungkin masih digunakan oleh booking atau pengajuan KPR.');
+        set_flash('gagal', 'Gagal menghapus foto galeri.');
     }
     header('Location: index.php');
     exit;
@@ -24,33 +50,110 @@ if ($action === 'hapus' && $id > 0) {
 $error = '';
 // Proses Submit Form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_perumahan = (int)($_POST['id_perumahan'] ?? 0);
-    $id_tipe      = (int)($_POST['id_tipe'] ?? 0);
-    $kode_unit    = trim($_POST['kode_unit'] ?? '');
-    $blok         = trim($_POST['blok'] ?? '');
-    $status       = trim($_POST['status'] ?? 'tersedia');
+    $id_perumahan   = (int)($_POST['id_perumahan'] ?? 0);
+    $id_tipe        = 0; // Deprecated, we store directly in rumah now
+    $kode_unit      = trim($_POST['kode_unit'] ?? '');
+    $blok           = trim($_POST['blok'] ?? '');
+    $status         = trim($_POST['status'] ?? 'tersedia');
+    
+    $nama_tipe      = trim($_POST['nama_tipe'] ?? '');
+    $luas_tanah     = (int)($_POST['luas_tanah'] ?? 0);
+    $luas_bangunan  = (int)($_POST['luas_bangunan'] ?? 0);
+    $jumlah_kamar   = (int)($_POST['jumlah_kamar'] ?? 0);
+    $jumlah_kamar_mandi = (int)($_POST['jumlah_kamar_mandi'] ?? 0);
+    $harga          = (float)str_replace(['.', 'Rp', ' '], '', $_POST['harga'] ?? '0');
+    $deskripsi      = trim($_POST['deskripsi'] ?? '');
 
-    if (!$id_perumahan || !$id_tipe || empty($kode_unit) || empty($blok)) {
-        $error = 'Semua kolom wajib diisi.';
+    if (!$id_perumahan || empty($kode_unit) || empty($blok) || empty($nama_tipe) || $harga <= 0) {
+        $error = 'Nama tipe, Blok, Nomor Unit, dan Harga wajib diisi.';
     } else {
-        if ($action === 'tambah') {
-            $stmt = $db->prepare("INSERT INTO rumah (id_perumahan, id_tipe, kode_unit, blok, status) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$id_perumahan, $id_tipe, $kode_unit, $blok, $status]);
-            set_flash('sukses', 'Unit rumah berhasil ditambahkan.');
-            header('Location: index.php');
-            exit;
-        } elseif ($action === 'edit' && $id > 0) {
-            $stmt = $db->prepare("UPDATE rumah SET id_perumahan = ?, id_tipe = ?, kode_unit = ?, blok = ?, status = ? WHERE id_rumah = ?");
-            $stmt->execute([$id_perumahan, $id_tipe, $kode_unit, $blok, $status, $id]);
-            set_flash('sukses', 'Data unit rumah berhasil diperbarui.');
-            header('Location: index.php');
-            exit;
+        // Ambil data foto lama jika edit
+        $foto_baru = '';
+        if ($action === 'edit' && $id > 0) {
+            $old_stmt = $db->prepare("SELECT foto FROM rumah WHERE id_rumah = ?");
+            $old_stmt->execute([$id]);
+            $foto_baru = $old_stmt->fetchColumn();
+        }
+
+        // Handle Upload Foto Utama
+        if (!empty($_FILES['foto']['name'])) {
+            $upload = upload_file($_FILES['foto'], '../../uploads/tipe_rumah');
+            if ($upload['ok']) {
+                if ($action === 'edit' && $foto_baru && file_exists('../../uploads/tipe_rumah/' . $foto_baru)) {
+                    unlink('../../uploads/tipe_rumah/' . $foto_baru);
+                }
+                $foto_baru = $upload['nama'];
+            } else {
+                $error = 'Gagal upload foto utama: ' . $upload['pesan'];
+            }
+        }
+
+        if (empty($error)) {
+            if ($action === 'tambah') {
+                $stmt = $db->prepare("INSERT INTO rumah (id_perumahan, id_tipe, kode_unit, blok, status, nama_tipe, luas_tanah, luas_bangunan, jumlah_kamar, jumlah_kamar_mandi, harga, deskripsi, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$id_perumahan, $id_tipe, $kode_unit, $blok, $status, $nama_tipe, $luas_tanah, $luas_bangunan, $jumlah_kamar, $jumlah_kamar_mandi, $harga, $deskripsi, $foto_baru]);
+                $id_rumah = $db->lastInsertId();
+
+                // Upload foto galeri jika ada
+                if (!empty($_FILES['foto_galeri']['name'][0])) {
+                    $files = $_FILES['foto_galeri'];
+                    $total_files = count($files['name']);
+                    for ($i = 0; $i < $total_files; $i++) {
+                        if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                            $file_data = [
+                                'name' => $files['name'][$i],
+                                'type' => $files['type'][$i],
+                                'tmp_name' => $files['tmp_name'][$i],
+                                'error' => $files['error'][$i],
+                                'size' => $files['size'][$i]
+                            ];
+                            $upload = upload_file($file_data, '../../uploads/galeri_rumah');
+                            if ($upload['ok']) {
+                                $db->prepare("INSERT INTO galeri_rumah (id_rumah, foto) VALUES (?, ?)")->execute([$id_rumah, $upload['nama']]);
+                            }
+                        }
+                    }
+                }
+
+                set_flash('sukses', 'Unit rumah berhasil ditambahkan.');
+                header('Location: ' . $redirect);
+                exit;
+            } elseif ($action === 'edit' && $id > 0) {
+                $stmt = $db->prepare("UPDATE rumah SET id_perumahan = ?, id_tipe = ?, kode_unit = ?, blok = ?, status = ?, nama_tipe = ?, luas_tanah = ?, luas_bangunan = ?, jumlah_kamar = ?, jumlah_kamar_mandi = ?, harga = ?, deskripsi = ?, foto = ? WHERE id_rumah = ?");
+                $stmt->execute([$id_perumahan, $id_tipe, $kode_unit, $blok, $status, $nama_tipe, $luas_tanah, $luas_bangunan, $jumlah_kamar, $jumlah_kamar_mandi, $harga, $deskripsi, $foto_baru, $id]);
+
+                // Upload foto galeri jika ada
+                if (!empty($_FILES['foto_galeri']['name'][0])) {
+                    $files = $_FILES['foto_galeri'];
+                    $total_files = count($files['name']);
+                    for ($i = 0; $i < $total_files; $i++) {
+                        if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                            $file_data = [
+                                'name' => $files['name'][$i],
+                                'type' => $files['type'][$i],
+                                'tmp_name' => $files['tmp_name'][$i],
+                                'error' => $files['error'][$i],
+                                'size' => $files['size'][$i]
+                            ];
+                            $upload = upload_file($file_data, '../../uploads/galeri_rumah');
+                            if ($upload['ok']) {
+                                $db->prepare("INSERT INTO galeri_rumah (id_rumah, foto) VALUES (?, ?)")->execute([$id, $upload['nama']]);
+                            }
+                        }
+                    }
+                }
+
+                set_flash('sukses', 'Data unit rumah berhasil diperbarui.');
+                header('Location: ' . $redirect);
+                exit;
+            }
         }
     }
 }
 
 // Ambil data untuk Edit
 $rumah = null;
+$galeri = [];
 if ($action === 'edit' && $id > 0) {
     $stmt = $db->prepare("SELECT * FROM rumah WHERE id_rumah = ?");
     $stmt->execute([$id]);
@@ -60,6 +163,10 @@ if ($action === 'edit' && $id > 0) {
         header('Location: index.php');
         exit;
     }
+    // Ambil galeri foto
+    $stmt_g = $db->prepare("SELECT * FROM galeri_rumah WHERE id_rumah = ?");
+    $stmt_g->execute([$id]);
+    $galeri = $stmt_g->fetchAll();
 }
 
 // Ambil data dropdown
@@ -70,10 +177,9 @@ $list_tipe      = $db->query("SELECT id_tipe, nama_tipe, harga FROM tipe_rumah O
 $f_perumahan = (int)($_GET['f_perumahan'] ?? 0);
 $f_status    = trim($_GET['f_status'] ?? '');
 
-$query = "SELECT r.*, p.nama_perumahan, t.nama_tipe, t.harga 
+$query = "SELECT r.*, p.nama_perumahan 
           FROM rumah r 
           JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-          JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
           WHERE 1=1";
 $params = [];
 
@@ -119,32 +225,32 @@ $list_rumah = $stmt->fetchAll();
             <?php tampil_flash(); ?>
 
             <?php if ($action === 'tambah' || $action === 'edit'): ?>
+                <?php 
+                $back_url = $_GET['redirect'] ?? $_POST['redirect'] ?? 'index.php';
+                $prefilled_perumahan = (int)($_GET['id_perumahan'] ?? 0);
+                ?>
                 <div class="panel">
                     <div class="panel-header">
                         <h3><?= $action === 'tambah' ? '🚪 Tambah Unit Rumah' : '✏️ Edit Unit Rumah' ?></h3>
-                        <a href="index.php" class="btn btn-gray btn-sm">← Kembali</a>
+                        <a href="<?= htmlspecialchars($back_url) ?>" class="btn btn-gray btn-sm">← Kembali</a>
                     </div>
                     <div class="panel-body">
                         <?php if ($error): ?><div class="alert alert-danger">❌ <?= htmlspecialchars($error) ?></div><?php endif; ?>
-                        <form method="POST">
+                        <form method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="redirect" value="<?= htmlspecialchars($back_url) ?>">
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Komplek Perumahan</label>
                                     <select name="id_perumahan" class="form-control" required>
                                         <option value="">-- Pilih Komplek --</option>
                                         <?php foreach($list_perumahan as $p): ?>
-                                            <option value="<?= $p['id_perumahan'] ?>" <?= (isset($rumah['id_perumahan']) && $rumah['id_perumahan'] == $p['id_perumahan']) || (isset($_POST['id_perumahan']) && $_POST['id_perumahan'] == $p['id_perumahan']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nama_perumahan']) ?></option>
+                                            <option value="<?= $p['id_perumahan'] ?>" <?= (isset($rumah['id_perumahan']) && $rumah['id_perumahan'] == $p['id_perumahan']) || (isset($_POST['id_perumahan']) && $_POST['id_perumahan'] == $p['id_perumahan']) || ($prefilled_perumahan == $p['id_perumahan']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nama_perumahan']) ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>Tipe Rumah</label>
-                                    <select name="id_tipe" class="form-control" required>
-                                        <option value="">-- Pilih Tipe --</option>
-                                        <?php foreach($list_tipe as $t): ?>
-                                            <option value="<?= $t['id_tipe'] ?>" <?= (isset($rumah['id_tipe']) && $rumah['id_tipe'] == $t['id_tipe']) || (isset($_POST['id_tipe']) && $_POST['id_tipe'] == $t['id_tipe']) ? 'selected' : '' ?>><?= htmlspecialchars($t['nama_tipe']) ?> (<?= format_rupiah($t['harga']) ?>)</option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <label>Nama Model / Tipe Unit Rumah</label>
+                                    <input type="text" name="nama_tipe" class="form-control" placeholder="Contoh: Tipe 36 Rose" value="<?= htmlspecialchars($_POST['nama_tipe'] ?? $rumah['nama_tipe'] ?? '') ?>" required>
                                 </div>
                             </div>
                             <div class="form-row-3">
@@ -165,7 +271,75 @@ $list_rumah = $stmt->fetchAll();
                                     </select>
                                 </div>
                             </div>
-                            <div style="margin-top:14px;">
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label>Luas Tanah (m²)</label>
+                                    <input type="number" name="luas_tanah" class="form-control" placeholder="72" value="<?= htmlspecialchars($_POST['luas_tanah'] ?? $rumah['luas_tanah'] ?? '') ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Luas Bangunan (m²)</label>
+                                    <input type="number" name="luas_bangunan" class="form-control" placeholder="36" value="<?= htmlspecialchars($_POST['luas_bangunan'] ?? $rumah['luas_bangunan'] ?? '') ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Harga Jual (Rp)</label>
+                                    <input type="text" name="harga" class="form-control format-angka" placeholder="350.000.000" value="<?= htmlspecialchars(isset($_POST['harga']) ? $_POST['harga'] : (isset($rumah['harga']) ? number_format($rumah['harga'], 0, ',', '.') : '')) ?>" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Jumlah Kamar Tidur</label>
+                                    <input type="number" name="jumlah_kamar" class="form-control" placeholder="2" value="<?= htmlspecialchars($_POST['jumlah_kamar'] ?? $rumah['jumlah_kamar'] ?? '2') ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label>Jumlah Kamar Mandi</label>
+                                    <input type="number" name="jumlah_kamar_mandi" class="form-control" placeholder="1" value="<?= htmlspecialchars($_POST['jumlah_kamar_mandi'] ?? $rumah['jumlah_kamar_mandi'] ?? '1') ?>">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Deskripsi / Spesifikasi Lengkap Unit</label>
+                                <textarea name="deskripsi" class="form-control" placeholder="Tuliskan spesifikasi teknis unit..." style="min-height:100px;"><?= htmlspecialchars($_POST['deskripsi'] ?? $rumah['deskripsi'] ?? '') ?></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Foto Utama / Sampul Unit Rumah</label>
+                                <input type="file" name="foto" class="form-control" accept=".jpg,.jpeg,.png" data-preview="imgPrev">
+                                <small class="form-hint">Kosongkan jika tidak ingin mengubah foto utama. Format: JPG/PNG, Max 5MB</small>
+                                <div style="margin-top:12px;">
+                                    <?php 
+                                    $foto_src = '';
+                                    $display = 'none';
+                                    if (isset($rumah['foto']) && $rumah['foto'] && file_exists('../../uploads/tipe_rumah/' . $rumah['foto'])) {
+                                        $foto_src = '../../uploads/tipe_rumah/' . $rumah['foto'];
+                                        $display = 'block';
+                                    }
+                                    ?>
+                                    <img id="imgPrev" src="<?= $foto_src ?>" style="max-height:200px; border-radius:10px; display:<?= $display ?>; box-shadow:var(--shadow);">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top:14px;">
+                                <label>Upload Foto Galeri (Bisa pilih beberapa gambar sekaligus)</label>
+                                <input type="file" name="foto_galeri[]" multiple class="form-control" accept="image/*">
+                                <small class="form-hint">Format yang didukung: JPG, PNG, JPEG. Ukuran maks 5MB per file.</small>
+                            </div>
+                            <?php if ($action === 'edit' && !empty($galeri)): ?>
+                                <div class="form-group" style="margin-top:20px;">
+                                    <label>Daftar Foto Galeri Saat Ini (Klik ✕ untuk menghapus)</label>
+                                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">
+                                        <?php foreach ($galeri as $g): ?>
+                                            <div style="position:relative; width:120px; height:120px; border:2px solid var(--border); border-radius:10px; overflow:hidden; box-shadow: var(--shadow);">
+                                                <img src="../../uploads/galeri_rumah/<?= htmlspecialchars($g['foto']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                                                <a href="index.php?action=hapus_foto&id=<?= $g['id_galeri'] ?>" 
+                                                   onclick="return confirm('Apakah Anda yakin ingin menghapus foto ini dari galeri?')"
+                                                   style="position:absolute; top:6px; right:6px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:11px; font-weight:800; border:1px solid #fff; transition: var(--tr);"
+                                                   onmouseover="this.style.background='#ef4444'; this.style.transform='scale(1.1)';"
+                                                   onmouseout="this.style.background='rgba(239,68,68,0.9)'; this.style.transform='scale(1)';">
+                                                    ✕
+                                                </a>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--border);">
                                 <button type="submit" class="btn btn-primary">💾 Simpan Data</button>
                                 <a href="index.php" class="btn btn-gray">Batal</a>
                             </div>
@@ -178,7 +352,6 @@ $list_rumah = $stmt->fetchAll();
                         <h2>🚪 Unit Rumah</h2>
                         <p>Kelola blok, kode unit, tipe, komplek perumahan, dan status penjualan</p>
                     </div>
-                    <a href="index.php?action=tambah" class="btn btn-primary">➕ Tambah Unit</a>
                 </div>
 
                 <!-- FILTER BAR -->
@@ -233,7 +406,6 @@ $list_rumah = $stmt->fetchAll();
                                             <td><?= badge_unit($r['status']) ?></td>
                                             <td style="text-align:center;">
                                                 <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
-                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $r['id_rumah'] ?>" data-nama="Blok <?= htmlspecialchars($r['blok'] . '-' . $r['kode_unit']) ?>" class="btn btn-danger btn-sm">🗑️ Hapus</a>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>

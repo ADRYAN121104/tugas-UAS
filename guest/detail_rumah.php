@@ -7,9 +7,8 @@ require_once '../config/session.php';
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: katalog.php'); exit; }
 
-$stmt = $db->prepare("SELECT r.*,p.nama_perumahan,p.alamat,p.deskripsi as deskripsi_komplek,p.maps_link,
-    t.nama_tipe,t.luas_tanah,t.luas_bangunan,t.jumlah_kamar,t.jumlah_kamar_mandi,t.harga,t.deskripsi as deskripsi_tipe,t.foto,t.id_tipe
-    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan JOIN tipe_rumah t ON r.id_tipe=t.id_tipe WHERE r.id_rumah=?");
+$stmt = $db->prepare("SELECT r.*,p.nama_perumahan,p.alamat,p.deskripsi as deskripsi_komplek,p.maps_link
+    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan WHERE r.id_rumah=?");
 $stmt->execute([$id]);
 $unit = $stmt->fetch();
 if (!$unit) { header('Location: katalog.php'); exit; }
@@ -18,14 +17,21 @@ $page_title = 'Detail Unit ' . $unit['nama_perumahan'] . ' - KPR Perumahan';
 require_once '../includes/header.php';
 
 // Unit lain di komplek yang sama
-$lain = $db->prepare("SELECT r.*,t.nama_tipe,t.harga,t.foto FROM rumah r JOIN tipe_rumah t ON r.id_tipe=t.id_tipe WHERE r.id_perumahan=? AND r.id_rumah!=? AND r.status='tersedia' LIMIT 3");
+$lain = $db->prepare("SELECT r.* FROM rumah r WHERE r.id_perumahan=? AND r.id_rumah!=? AND r.status='tersedia' LIMIT 3");
 $lain->execute([$unit['id_perumahan'], $id]);
 $unit_lain = $lain->fetchAll();
 
 // Cek status booking user untuk unit ini
 $user_booking = null;
 if (sudah_login() && role_user() === 'customer') {
-    $bcek = $db->prepare("SELECT id_booking, status_booking FROM booking WHERE id_user = ? AND id_rumah = ? AND status_booking != 'dibatalkan' LIMIT 1");
+    $bcek = $db->prepare("
+        SELECT b.id_booking, b.status_booking, k.id_pengajuan, k.status_pengajuan, pay.status_verifikasi
+        FROM booking b 
+        LEFT JOIN pengajuan_kpr k ON (b.id_rumah = k.id_rumah AND b.id_user = k.id_user)
+        LEFT JOIN pembayaran pay ON b.id_booking = pay.id_booking
+        WHERE b.id_user = ? AND b.id_rumah = ? AND b.status_booking != 'dibatalkan' 
+        LIMIT 1
+    ");
     $bcek->execute([id_user(), $id]);
     $user_booking = $bcek->fetch();
 }
@@ -34,8 +40,25 @@ if (sudah_login() && role_user() === 'customer') {
 $gstmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ?");
 $gstmt->execute([$id]);
 $galeri_db = $gstmt->fetchAll(PDO::FETCH_COLUMN);
-// Jika galeri kosong, kita gunakan fallback default gambar interior & kitchen yang baru saja digenerate
-$galeri = !empty($galeri_db) ? $galeri_db : ['interior.png', 'kitchen.png'];
+
+// Kumpulkan semua gambar yang valid untuk unit ini
+$all_images = [];
+if ($unit['foto'] && file_exists('../uploads/tipe_rumah/' . $unit['foto'])) {
+    $all_images[] = '../uploads/tipe_rumah/' . $unit['foto'];
+}
+if (!empty($galeri_db)) {
+    foreach ($galeri_db as $g) {
+        if (file_exists('../uploads/galeri_rumah/' . $g)) {
+            $all_images[] = '../uploads/galeri_rumah/' . $g;
+        }
+    }
+}
+// Fallback jika tidak ada foto sama sekali
+if (empty($all_images)) {
+    $all_images[] = '../uploads/tipe_rumah/interior.png';
+    $all_images[] = '../uploads/tipe_rumah/kitchen.png';
+}
+$primary_foto = $all_images[0];
 
 // Ambil denah dari database
 $dstmt = $db->prepare("SELECT gambar_denah FROM denah_rumah WHERE id_tipe = ?");
@@ -58,33 +81,17 @@ $dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/
         <div>
             <!-- Main Photo Area -->
             <div style="height:380px;background:#f1f5f9;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;overflow:hidden;border:1px solid #e2e8f0;" id="mainImageContainer">
-                <?php if ($unit['foto'] && file_exists('../uploads/tipe_rumah/' . $unit['foto'])): ?>
-                    <img id="mainImage" src="../uploads/tipe_rumah/<?= htmlspecialchars($unit['foto']) ?>" style="width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease;">
-                <?php else: ?>
-                    <img id="mainImage" src="../uploads/tipe_rumah/interior.png" style="width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease;">
-                <?php endif; ?>
+                <img id="mainImage" src="<?= htmlspecialchars($primary_foto) ?>" style="width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease;">
                 <span style="position:absolute;top:16px;left:16px;background:<?= $unit['status']==='tersedia'?'#10b981':'#ef4444' ?>;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;z-index:2;">
                     <?= $unit['status']==='tersedia' ? '✅ Tersedia' : ($unit['status']==='booking' ? '🔒 Dibooking' : '🏠 Terjual') ?>
                 </span>
             </div>
 
             <!-- Thumbnail Gallery Grid -->
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
-                <!-- Main Image Thumbnail -->
-                <div class="thumb-item active" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid #2563eb;transition:.2s;background:#fff;display:flex;align-items:center;justify-content:center;">
-                    <?php if ($unit['foto'] && file_exists('../uploads/tipe_rumah/' . $unit['foto'])): ?>
-                        <img src="../uploads/tipe_rumah/<?= htmlspecialchars($unit['foto']) ?>" style="width:100%; height:100%; object-fit:cover;">
-                    <?php else: ?>
-                        <img src="../uploads/tipe_rumah/interior.png" style="width:100%; height:100%; object-fit:cover; display:none;">
-                        <span style="font-size:24px;">🏠</span>
-                    <?php endif; ?>
-                </div>
-                <!-- Additional Images -->
-                <?php foreach ($galeri as $g): 
-                    $src = file_exists('../uploads/tipe_rumah/' . $g) ? '../uploads/tipe_rumah/' . $g : (file_exists('../uploads/galeri_rumah/' . $g) ? '../uploads/galeri_rumah/' . $g : '../uploads/tipe_rumah/' . $g);
-                ?>
-                    <div class="thumb-item" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid transparent;transition:.2s;">
-                        <img src="<?= $src ?>" style="width:100%; height:100%; object-fit:cover;">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px;">
+                <?php foreach ($all_images as $index => $img_src): ?>
+                    <div class="thumb-item <?= $index === 0 ? 'active' : '' ?>" onclick="changeMainImage(this)" style="cursor:pointer;border-radius:8px;overflow:hidden;height:70px;border:2px solid <?= $index === 0 ? '#2563eb' : 'transparent' ?>;transition:.2s;background:#fff;display:flex;align-items:center;justify-content:center;">
+                        <img src="<?= htmlspecialchars($img_src) ?>" style="width:100%; height:100%; object-fit:cover;">
                     </div>
                 <?php endforeach; ?>
                 
@@ -114,7 +121,7 @@ $dsrc = file_exists('../uploads/tipe_rumah/' . $denah) ? '../uploads/tipe_rumah/
 
             <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e2e8f0;margin-bottom:20px;">
                 <h3 style="font-size:17px;font-weight:800;margin-bottom:12px;">Tipe: <?= htmlspecialchars($unit['nama_tipe']) ?></h3>
-                <p style="color:#64748b;line-height:1.7;"><?= htmlspecialchars($unit['deskripsi_tipe'] ?? '') ?></p>
+                <p style="color:#64748b;line-height:1.7;"><?= htmlspecialchars($unit['deskripsi'] ?? '') ?></p>
             </div>
 
             <div style="background:#fff;border-radius:12px;padding:22px;border:1px solid #e2e8f0;margin-bottom:20px;">

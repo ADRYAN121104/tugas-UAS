@@ -63,12 +63,11 @@ $dokumen = null;
 $tracking = [];
 if ($action === 'detail' && $id > 0) {
     // Ambil detail pengajuan
-    $stmt = $db->prepare("SELECT pk.*, u.nama_lengkap, u.email, u.no_hp, p.nama_perumahan, r.blok, r.kode_unit, t.nama_tipe, t.harga, b.nama_bank, b.bunga_kpr
+    $stmt = $db->prepare("SELECT pk.*, u.nama_lengkap, u.email, u.no_hp, p.nama_perumahan, r.blok, r.kode_unit, r.nama_tipe, r.harga, b.nama_bank, b.bunga_kpr
                           FROM pengajuan_kpr pk 
                           JOIN users u ON pk.id_user = u.id_user 
                           JOIN rumah r ON pk.id_rumah = r.id_rumah 
                           JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-                          JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
                           JOIN bank b ON pk.id_bank = b.id_bank 
                           WHERE pk.id_pengajuan = ?");
     $stmt->execute([$id]);

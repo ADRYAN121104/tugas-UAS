@@ -6,11 +6,10 @@ require_once '../config/functions.php';
 
 $id = id_user();
 $stmt = $db->prepare("
-    SELECT b.*, p.nama_perumahan, p.alamat, p.maps_link, t.nama_tipe, t.harga, r.blok, r.kode_unit, pay.status_verifikasi, pay.jumlah_bayar 
+    SELECT b.*, p.nama_perumahan, p.alamat, p.maps_link, r.nama_tipe, r.harga, r.blok, r.kode_unit, pay.status_verifikasi, pay.jumlah_bayar 
     FROM booking b 
     JOIN rumah r ON b.id_rumah=r.id_rumah 
     JOIN perumahan p ON r.id_perumahan=p.id_perumahan 
-    JOIN tipe_rumah t ON r.id_tipe=t.id_tipe 
     LEFT JOIN pembayaran pay ON b.id_booking=pay.id_booking 
     WHERE b.id_user=? 
     ORDER BY b.tanggal_booking DESC

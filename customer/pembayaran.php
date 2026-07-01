@@ -15,9 +15,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'check') {
 require_once '../config/functions.php';
 
 $id = id_user();
-$stmt = $db->prepare("SELECT pay.*,b.tanggal_booking,b.booking_fee,b.status_booking,p.nama_perumahan,p.alamat,p.maps_link,r.blok,r.kode_unit,t.nama_tipe
+$stmt = $db->prepare("SELECT pay.*,b.tanggal_booking,b.booking_fee,b.status_booking,p.nama_perumahan,p.alamat,p.maps_link,r.blok,r.kode_unit,r.nama_tipe
     FROM pembayaran pay JOIN booking b ON pay.id_booking=b.id_booking JOIN rumah r ON b.id_rumah=r.id_rumah
-    JOIN perumahan p ON r.id_perumahan=p.id_perumahan JOIN tipe_rumah t ON r.id_tipe=t.id_tipe
+    JOIN perumahan p ON r.id_perumahan=p.id_perumahan
     WHERE b.id_user=? ORDER BY pay.tanggal_bayar DESC");
 $stmt->execute([$id]); $list=$stmt->fetchAll();
 

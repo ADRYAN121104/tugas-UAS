@@ -16,10 +16,9 @@ if (!$id_rumah) {
 
 // Ambil info unit rumah
 $stmt = $db->prepare("
-    SELECT r.*, p.nama_perumahan, p.alamat, t.nama_tipe, t.harga, t.luas_tanah, t.luas_bangunan, t.jumlah_kamar, t.jumlah_kamar_mandi
+    SELECT r.*, p.nama_perumahan, p.alamat
     FROM rumah r
     JOIN perumahan p ON r.id_perumahan = p.id_perumahan
-    JOIN tipe_rumah t ON r.id_tipe = t.id_tipe
     WHERE r.id_rumah = ?
 ");
 $stmt->execute([$id_rumah]);

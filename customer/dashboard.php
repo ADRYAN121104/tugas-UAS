@@ -7,6 +7,22 @@ require_once '../config/functions.php';
 $id   = id_user();
 $nama = nama_user();
 
+// Cek action items untuk customer (Alur baru)
+$stmt_alerts = $db->prepare("
+    SELECT b.id_booking, b.id_rumah, b.status_booking, p.nama_perumahan, r.blok, r.kode_unit,
+           k.id_pengajuan, k.status_pengajuan,
+           pay.id_pembayaran, pay.status_verifikasi
+    FROM booking b
+    JOIN rumah r ON b.id_rumah = r.id_rumah
+    JOIN perumahan p ON r.id_perumahan = p.id_perumahan
+    LEFT JOIN pengajuan_kpr k ON (b.id_rumah = k.id_rumah AND b.id_user = k.id_user)
+    LEFT JOIN pembayaran pay ON b.id_booking = pay.id_booking
+    WHERE b.id_user = ? AND b.status_booking != 'dibatalkan'
+    ORDER BY b.id_booking DESC LIMIT 1
+");
+$stmt_alerts->execute([$id]);
+$active_alert_booking = $stmt_alerts->fetch();
+
 // Statistik customer
 $total_booking   = $db->prepare("SELECT COUNT(*) FROM booking WHERE id_user=?"); $total_booking->execute([$id]); $total_booking = $total_booking->fetchColumn();
 $booking_konfirm = $db->prepare("SELECT COUNT(*) FROM booking WHERE id_user=? AND status_booking='dikonfirmasi'"); $booking_konfirm->execute([$id]); $booking_konfirm = $booking_konfirm->fetchColumn();
@@ -15,11 +31,10 @@ $kpr_aktif       = $db->prepare("SELECT COUNT(*) FROM pengajuan_kpr WHERE id_use
 
 // Booking terbaru
 $bookings_terbaru = $db->prepare("
-    SELECT b.*, p.nama_perumahan, r.blok, r.kode_unit, t.nama_tipe, t.harga
+    SELECT b.*, p.nama_perumahan, r.blok, r.kode_unit, r.nama_tipe, r.harga
     FROM booking b
     JOIN rumah r ON b.id_rumah = r.id_rumah
     JOIN perumahan p ON r.id_perumahan = p.id_perumahan
-    JOIN tipe_rumah t ON r.id_tipe = t.id_tipe
     WHERE b.id_user = ?
     ORDER BY b.id_booking DESC LIMIT 3
 ");
@@ -57,6 +72,125 @@ require_once '../includes/header.php';
             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <a href="../guest/katalog.php" class="btn btn-accent btn-sm">🏠 Cari Properti</a>
                 <a href="../guest/simulasi_kpr.php" class="btn btn-white btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);">🧮 Simulasi KPR</a>
+            </div>
+        </div>
+    <!-- ACTION ITEMS ALERTS (Alur Baru) -->
+    <?php if ($active_alert_booking): 
+        $sb = $active_alert_booking['status_booking'];
+        $kp = $active_alert_booking['status_pengajuan'];
+        $id_peng = $active_alert_booking['id_pengajuan'];
+        $sv = $active_alert_booking['status_verifikasi'];
+        $id_booking = $active_alert_booking['id_booking'];
+        $id_rumah = $active_alert_booking['id_rumah'];
+        $unit_name = htmlspecialchars($active_alert_booking['nama_perumahan'] . ' - Blok ' . $active_alert_booking['blok'] . '-' . $active_alert_booking['kode_unit']);
+        
+        if ($sb === 'menunggu'):
+            if (!$id_peng): ?>
+                <!-- Langkah 2: Ajukan Berkas KPR -->
+                <div style="background:linear-gradient(135deg,#ede9fe,#f5f3ff); border-left:5px solid #8b5cf6; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(139,92,246,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:250px;">
+                        <h4 style="color:#5b21b6; font-size:14.5px; font-weight:800; margin-bottom:4px;">🚀 Langkah 2: Ajukan Berkas KPR</h4>
+                        <p style="color:#4c1d95; font-size:13px; line-height:1.4; margin:0;">Unit <b><?= $unit_name ?></b> berhasil dibooking. Segera lengkapi dan unggah berkas KPR Anda (KTP, KK, Slip Gaji) agar berkas bisa segera ditinjau oleh Admin & Bank.</p>
+                    </div>
+                    <a href="pengajuan_kpr.php?id_rumah=<?= $id_rumah ?>" class="btn btn-primary btn-sm" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:#fff; border-radius:8px; font-weight:700; white-space:nowrap; border:none;">🚀 Ajukan Berkas KPR</a>
+                </div>
+            <?php elseif (in_array($kp, ['pengajuan_masuk', 'verifikasi_dokumen', 'survey'])): ?>
+                <!-- Langkah 3: Review KPR Sedang Berjalan -->
+                <div style="background:linear-gradient(135deg,#e0f2fe,#f0f9ff); border-left:5px solid #0284c7; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(2,132,199,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:250px;">
+                        <h4 style="color:#0369a1; font-size:14.5px; font-weight:800; margin-bottom:4px;">⏳ Langkah 3: Review KPR Sedang Berjalan</h4>
+                        <p style="color:#075985; font-size:13px; line-height:1.4; margin:0;">Pengajuan KPR Anda untuk unit <b><?= $unit_name ?></b> sedang ditinjau oleh Admin/Bank. Pembayaran booking fee akan dibuka secara otomatis setelah status pengajuan KPR Anda disetujui.</p>
+                    </div>
+                    <a href="status_kpr.php?id=<?= $id_peng ?>" class="btn btn-outline btn-sm" style="color:#0284c7; border-color:#0284c7; border-radius:8px; font-weight:700; white-space:nowrap;">📊 Lacak Status KPR</a>
+                </div>
+            <?php elseif ($kp === 'disetujui'): ?>
+                <?php if (!$sv): ?>
+                    <!-- Langkah 4: Bayar Booking Fee -->
+                    <div style="background:linear-gradient(135deg,#fef3c7,#fffbeb); border-left:5px solid #d97706; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(217,119,6,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:250px;">
+                            <h4 style="color:#92400e; font-size:14.5px; font-weight:800; margin-bottom:4px;">💰 Langkah 4: Bayar Booking Fee</h4>
+                            <p style="color:#78350f; font-size:13px; line-height:1.4; margin:0;">Selamat! Pengajuan KPR Anda untuk unit <b><?= $unit_name ?></b> telah <b>DISETUJUI</b>. Silakan lakukan pembayaran booking fee untuk mengunci unit dan mengonfirmasi pemesanan Anda.</p>
+                        </div>
+                        <a href="upload_pembayaran.php?id=<?= $id_booking ?>" class="btn btn-accent btn-sm" style="color:#fff; border-radius:8px; font-weight:700; white-space:nowrap; border:none;">💰 Bayar Booking Fee</a>
+                    </div>
+                <?php elseif ($sv === 'pending'): ?>
+                    <!-- Langkah 5: Verifikasi Pembayaran Booking Fee -->
+                    <div style="background:linear-gradient(135deg,#fef9c3,#fffbeb); border-left:5px solid #f59e0b; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(245,158,11,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:250px;">
+                            <h4 style="color:#92400e; font-size:14.5px; font-weight:800; margin-bottom:4px;">⏳ Langkah 5: Verifikasi Pembayaran</h4>
+                            <p style="color:#78350f; font-size:13px; line-height:1.4; margin:0;">Bukti pembayaran booking fee untuk unit <b><?= $unit_name ?></b> telah dikirim dan saat ini sedang dalam proses verifikasi oleh Admin (maksimal 24 jam).</p>
+                        </div>
+                        <a href="booking_saya.php" class="btn btn-sm" style="background:#fbbf24; color:#78350f; border-radius:8px; font-weight:700; white-space:nowrap;">📋 Cek Status</a>
+                    </div>
+                <?php elseif ($sv === 'ditolak'): ?>
+                    <!-- Pembayaran Ditolak -->
+                    <div style="background:linear-gradient(135deg,#fee2e2,#fef2f2); border-left:5px solid #ef4444; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(239,68,68,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:250px;">
+                            <h4 style="color:#991b1b; font-size:14.5px; font-weight:800; margin-bottom:4px;">❌ Pembayaran Booking Fee Ditolak</h4>
+                            <p style="color:#7f1d1d; font-size:13px; line-height:1.4; margin:0;">Pembayaran booking fee untuk unit <b><?= $unit_name ?></b> ditolak admin. Silakan upload ulang bukti transfer yang valid.</p>
+                        </div>
+                        <a href="upload_pembayaran.php?id=<?= $id_booking ?>" class="btn btn-danger btn-sm" style="background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; border-radius:8px; font-weight:700; white-space:nowrap;">⚠️ Bayar Ulang</a>
+                    </div>
+                <?php endif; ?>
+            <?php elseif ($kp === 'ditolak'): ?>
+                <!-- KPR Ditolak -->
+                <div style="background:linear-gradient(135deg,#fee2e2,#fef2f2); border-left:5px solid #ef4444; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(239,68,68,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:250px;">
+                        <h4 style="color:#991b1b; font-size:14.5px; font-weight:800; margin-bottom:4px;">❌ Pengajuan KPR Ditolak</h4>
+                        <p style="color:#7f1d1d; font-size:13px; line-height:1.4; margin:0;">Maaf, pengajuan KPR Anda untuk unit <b><?= $unit_name ?></b> ditolak oleh bank/admin. Silakan hubungi marketing kami atau pilih unit rumah lain.</p>
+                    </div>
+                    <a href="booking_saya.php" class="btn btn-sm btn-gray" style="border-radius:8px; font-weight:700; white-space:nowrap;">📋 Ke Booking Saya</a>
+                </div>
+            <?php endif; ?>
+        <?php elseif ($sb === 'dikonfirmasi'): ?>
+            <?php if ($kp === 'disetujui'): ?>
+                <!-- Langkah 6: Siap Akad Kredit -->
+                <div style="background:linear-gradient(135deg,#d1fae5,#ecfdf5); border-left:5px solid #10b981; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(16,185,129,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:250px;">
+                        <h4 style="color:#065f46; font-size:14.5px; font-weight:800; margin-bottom:4px;">🎉 Langkah 6: Siap Akad Kredit</h4>
+                        <p style="color:#064e3b; font-size:13px; line-height:1.4; margin:0;">Selamat! Booking unit <b><?= $unit_name ?></b> telah dikonfirmasi dan pembayaran valid. Silakan hubungi marketing untuk menjadwalkan Akad Kredit.</p>
+                    </div>
+                    <a href="status_kpr.php?id=<?= $id_peng ?>" class="btn btn-success btn-sm" style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; border-radius:8px; font-weight:700; white-space:nowrap; border:none;">📊 Lacak Status KPR</a>
+                </div>
+            <?php elseif ($kp === 'akad_kredit'): ?>
+                <!-- Akad Kredit Selesai -->
+                <div style="background:linear-gradient(135deg,#d1fae5,#ecfdf5); border-left:5px solid #10b981; border-radius:14px; padding:18px 22px; margin-bottom:20px; box-shadow: 0 4px 12px rgba(16,185,129,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:250px;">
+                        <h4 style="color:#065f46; font-size:14.5px; font-weight:800; margin-bottom:4px;">🏠 Akad Kredit Selesai</h4>
+                        <p style="color:#064e3b; font-size:13px; line-height:1.4; margin:0;">Proses Akad Kredit untuk unit <b><?= $unit_name ?></b> telah selesai. Selamat atas kepemilikan rumah baru Anda!</p>
+                    </div>
+                    <a href="status_kpr.php?id=<?= $id_peng ?>" class="btn btn-success btn-sm" style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; border-radius:8px; font-weight:700; white-space:nowrap; border:none;">📊 Lihat Dokumen</a>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <!-- PANDUAN ALUR PROSES PEMBELIAN (STEPPER) -->
+    <div style="background:#fff; border-radius:16px; border:1px solid #e2e8f0; padding:24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom:28px;">
+        <h3 style="font-size:15px; font-weight:800; margin-bottom:18px; color:#0f172a;">🗺️ Alur Pembelian Rumah KPR (Langkah demi Langkah)</h3>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; overflow-x:auto; padding-bottom:10px; gap:16px;" id="flow-stepper-dash">
+            <div style="flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#d1fae5; color:#065f46; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; margin-bottom:8px; border:2px solid #34d399;">1</div>
+                <div style="font-size:12.5px; font-weight:700; color:#065f46; margin-bottom:4px;">1. Booking Unit</div>
+                <p style="font-size:11px; color:#64748b; line-height:1.4;">Pilih unit rumah di katalog, klik tombol Booking untuk mengamankan unit.</p>
+            </div>
+            <div style="align-self:center; color:#cbd5e1; font-size:18px; font-weight:bold; padding-top:8px;">➔</div>
+            <div style="flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#ede9fe; color:#5b21b6; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; margin-bottom:8px; border:2px solid #a78bfa;">2</div>
+                <div style="font-size:12.5px; font-weight:700; color:#6d28d9; margin-bottom:4px;">2. Ajukan Berkas KPR</div>
+                <p style="font-size:11px; color:#64748b; line-height:1.4;">Unggah dokumen KPR (KTP, KK, Slip Gaji) untuk diproses & ditinjau Admin/Bank.</p>
+            </div>
+            <div style="align-self:center; color:#cbd5e1; font-size:18px; font-weight:bold; padding-top:8px;">➔</div>
+            <div style="flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#fef3c7; color:#92400e; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; margin-bottom:8px; border:2px solid #fbbf24;">3</div>
+                <div style="font-size:12.5px; font-weight:700; color:#b45309; margin-bottom:4px;">3. Bayar Booking Fee</div>
+                <p style="font-size:11px; color:#64748b; line-height:1.4;">Setelah KPR disetujui, lakukan pembayaran booking fee online / upload manual.</p>
+            </div>
+            <div style="align-self:center; color:#cbd5e1; font-size:18px; font-weight:bold; padding-top:8px;">➔</div>
+            <div style="flex:1; min-width:140px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#e0f2fe; color:#0369a1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; margin-bottom:8px; border:2px solid #38bdf8;">4</div>
+                <div style="font-size:12.5px; font-weight:700; color:#0369a1; margin-bottom:4px;">4. Booking Dikonfirmasi</div>
+                <p style="font-size:11px; color:#64748b; line-height:1.4;">Admin verifikasi bayar -> Booking dikonfirmasi & lanjut Akad Kredit.</p>
             </div>
         </div>
     </div>

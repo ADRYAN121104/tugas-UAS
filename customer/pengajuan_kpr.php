@@ -11,17 +11,16 @@ $id_rumah = (int)($_GET['id_rumah'] ?? 0);
 $unit = null;
 if ($id_rumah) {
     $stmt = $db->prepare("
-        SELECT r.*, p.nama_perumahan, t.nama_tipe, t.harga, t.luas_bangunan, t.luas_tanah 
+        SELECT r.*, p.nama_perumahan 
         FROM rumah r 
         JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-        JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
         JOIN booking b ON r.id_rumah = b.id_rumah
-        WHERE r.id_rumah = ? AND b.id_user = ? AND b.status_booking = 'dikonfirmasi'
+        WHERE r.id_rumah = ? AND b.id_user = ? AND b.status_booking IN ('menunggu', 'dikonfirmasi')
     ");
     $stmt->execute([$id_rumah, $id_user]);
     $unit = $stmt->fetch();
     if (!$unit) {
-        set_flash('gagal', 'Anda harus memiliki booking terkonfirmasi untuk unit ini sebelum mengajukan KPR.');
+        set_flash('gagal', 'Anda harus memiliki booking aktif untuk unit ini sebelum mengajukan KPR.');
         header('Location: booking_saya.php');
         exit;
     }
@@ -31,6 +30,17 @@ $list_bank = $db->query("SELECT * FROM bank ORDER BY bunga_kpr ASC")->fetchAll()
 $error = '';
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     $id_rumah_p = (int)$_POST['id_rumah'];
+    if (!$unit && $id_rumah_p) {
+        $stmt = $db->prepare("
+            SELECT r.*, p.nama_perumahan 
+            FROM rumah r 
+            JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
+            JOIN booking b ON r.id_rumah = b.id_rumah
+            WHERE r.id_rumah = ? AND b.id_user = ? AND b.status_booking IN ('menunggu', 'dikonfirmasi')
+        ");
+        $stmt->execute([$id_rumah_p, $id_user]);
+        $unit = $stmt->fetch();
+    }
     $id_bank    = (int)$_POST['id_bank'];
     $penghasilan = (float)str_replace(['.','Rp',' '],'',$_POST['penghasilan']);
     $uang_muka   = (float)str_replace(['.','Rp',' '],'',$_POST['uang_muka']);
@@ -46,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     elseif ($penghasilan <= 0 || $uang_muka <= 0 || !$id_bank || !$tenor) {
         $error = 'Semua kolom data kredit wajib diisi.';
     }
-    // VALIDASI: Minimal DP Rp 5.000.000
-    elseif ($uang_muka < 5000000) {
-        $error = 'Uang Muka (DP) minimal adalah ' . format_rupiah(5000000) . '.';
+    // VALIDASI: Minimal DP 10% dari harga rumah
+    elseif ($unit && $uang_muka < ($unit['harga'] * 0.10)) {
+        $error = 'Uang Muka (DP) minimal adalah 10% dari harga rumah (' . format_rupiah($unit['harga'] * 0.10) . ').';
     }
     // VALIDASI: Penghasilan minimal Rp 5.000.000 per bulan (karena estimasi cicilan Rp 3.000.000)
     elseif ($penghasilan < 5000000) {
@@ -107,12 +117,11 @@ require_once '../includes/header.php';
                     <h3 style="font-size:15px; font-weight:800; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">📋 Pilih Unit Rumah</h3>
                     <?php 
                     $stmt_avail = $db->prepare("
-                        SELECT r.*, p.nama_perumahan, t.nama_tipe, t.harga 
+                        SELECT r.*, p.nama_perumahan 
                         FROM rumah r 
                         JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-                        JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
                         JOIN booking b ON r.id_rumah = b.id_rumah
-                        WHERE b.id_user = ? AND b.status_booking = 'dikonfirmasi'
+                        WHERE b.id_user = ? AND b.status_booking IN ('menunggu', 'dikonfirmasi')
                         ORDER BY p.nama_perumahan
                     ");
                     $stmt_avail->execute([$id_user]);
@@ -135,10 +144,10 @@ require_once '../includes/header.php';
                     
                     <div class="form-group">
                         <label style="font-weight:700; font-size:13px; color:#475569; display:block; margin-bottom:6px;">Bank Pilihan</label>
-                        <select name="id_bank" class="form-control" required>
+                        <select name="id_bank" id="id_bank" class="form-control" required onchange="updateCalculation()">
                             <option value="">-- Pilih Bank --</option>
                             <?php foreach($list_bank as $b): ?>
-                                <option value="<?= $b['id_bank'] ?>"><?= htmlspecialchars($b['nama_bank']) ?> - <?= $b['bunga_kpr'] ?>%/thn (maks <?= $b['tenor_maksimal'] ?> thn)</option>
+                                <option value="<?= $b['id_bank'] ?>" data-bunga="<?= $b['bunga_kpr'] ?>" data-tenor="<?= $b['tenor_maksimal'] ?>"><?= htmlspecialchars($b['nama_bank']) ?> - <?= $b['bunga_kpr'] ?>%/thn (maks <?= $b['tenor_maksimal'] ?> thn)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -151,15 +160,26 @@ require_once '../includes/header.php';
                         </div>
                         <div class="form-group">
                             <label style="font-weight:700; font-size:13px; color:#475569; display:block; margin-bottom:6px;">Uang Muka / DP (Rp)</label>
-                            <input type="text" name="uang_muka" class="form-control format-angka" placeholder="<?= $unit?number_format($unit['harga']*0.2,0,',','.'):'5.000.000' ?>" required>
-                            <small style="color:#94a3b8; font-size:11px;">Minimal Rp 5.000.000</small>
+                            <input type="text" id="uang_muka" name="uang_muka" class="form-control format-angka" 
+                                   value="<?= $unit ? number_format($unit['harga']*0.2,0,',','.') : '' ?>"
+                                   placeholder="<?= $unit ? number_format($unit['harga']*0.2,0,',','.') : '5.000.000' ?>" required
+                                   oninput="formatDPInput(this)" onkeyup="updateCalculation()">
+                            <?php if ($unit): ?>
+                                <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+                                    <input type="range" id="dp_slider" min="10" max="90" value="20" step="1" style="flex:1; accent-color:#2563eb;" oninput="updateDPFromSlider(this.value)">
+                                    <span id="dp_percent" style="font-size:12px; color:#2563eb; font-weight:700; width:45px; text-align:right;">20%</span>
+                                </div>
+                                <small style="color:#94a3b8; font-size:11px;">Minimal 10% dari harga rumah (<?= format_rupiah($unit['harga']*0.1) ?>)</small>
+                            <?php else: ?>
+                                <small style="color:#94a3b8; font-size:11px;">Minimal Rp 5.000.000</small>
+                            <?php endif; ?>
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label style="font-weight:700; font-size:13px; color:#475569; display:block; margin-bottom:6px;">Tenor (Tahun)</label>
-                        <select name="tenor" class="form-control" required>
-                            <?php for($t=5;$t<=30;$t+=5): ?><option value="<?= $t ?>"><?= $t ?> Tahun</option><?php endfor; ?>
+                        <select name="tenor" id="tenor" class="form-control" required onchange="updateCalculation()">
+                            <?php for($t=5;$t<=30;$t+=5): ?><option value="<?= $t ?>" <?= $t==15?'selected':'' ?>><?= $t ?> Tahun</option><?php endfor; ?>
                         </select>
                     </div>
                 </div>
@@ -209,6 +229,17 @@ require_once '../includes/header.php';
                         <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:#64748b;padding:8px 0;">Harga</td><td style="font-weight:800;color:#2563eb; text-align:right;"><?= format_rupiah($unit['harga']) ?></td></tr>
                         <tr><td style="color:#64748b;padding:8px 0;">LT / LB</td><td style="font-weight:700; text-align:right;"><?= $unit['luas_tanah'] ?>/<?= $unit['luas_bangunan'] ?> m²</td></tr>
                     </table>
+                    
+                    <div style="margin-top:20px; padding-top:16px; border-top:1px solid #f1f5f9;" id="estimasi-kredit-box">
+                        <h4 style="font-size:13.5px; font-weight:800; margin-bottom:12px; color:#0f172a;">📊 Estimasi Kredit KPR</h4>
+                        <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+                            <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:#64748b;padding:6px 0;">Pinjaman Pokok</td><td style="font-weight:700; text-align:right; color:#0f172a;" id="calc_pokok">-</td></tr>
+                            <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:#64748b;padding:6px 0;">Bunga Bank</td><td style="font-weight:700; text-align:right; color:#0f172a;" id="calc_bunga">-</td></tr>
+                            <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:#64748b;padding:6px 0;">Total Bunga</td><td style="font-weight:700; text-align:right; color:#d97706;" id="calc_total_bunga">-</td></tr>
+                            <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:#64748b;padding:6px 0;">Total Pembayaran</td><td style="font-weight:700; text-align:right; color:#0f172a;" id="calc_total_bayar">-</td></tr>
+                            <tr style="background:#eff6ff;"><td style="color:#1e40af;padding:10px 8px;font-weight:800;">Cicilan / Bulan</td><td style="font-weight:900; text-align:right; color:#2563eb; font-size:13.5px; padding:10px 8px;" id="calc_cicilan">-</td></tr>
+                        </table>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -216,5 +247,88 @@ require_once '../includes/header.php';
     </form>
 </main>
 <script src="../assets/js/script.js"></script>
+<script>
+const hargaRumah = <?= $unit ? (float)$unit['harga'] : 0 ?>;
+
+function formatDPInput(el) {
+    const raw = el.value.replace(/\D/g, '');
+    el.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+    
+    if (hargaRumah > 0) {
+        const dp = parseFloat(raw) || 0;
+        let pct = Math.round((dp / hargaRumah) * 100);
+        if (pct < 10) pct = 10;
+        if (pct > 90) pct = 90;
+        const slider = document.getElementById('dp_slider');
+        if (slider) slider.value = pct;
+        const pctSpan = document.getElementById('dp_percent');
+        if (pctSpan) pctSpan.textContent = Math.round((dp / hargaRumah) * 100) + '%';
+    }
+}
+
+function updateDPFromSlider(pct) {
+    if (hargaRumah > 0) {
+        const dp = Math.round(hargaRumah * (pct / 100));
+        document.getElementById('uang_muka').value = dp.toLocaleString('id-ID');
+        document.getElementById('dp_percent').textContent = pct + '%';
+        updateCalculation();
+    }
+}
+
+function updateCalculation() {
+    if (hargaRumah <= 0) return;
+    
+    const dpInput = document.getElementById('uang_muka');
+    const dp = parseFloat(dpInput.value.replace(/\./g, '').replace(/,/g, '')) || 0;
+    
+    const bankSelect = document.getElementById('id_bank');
+    const selectedOption = bankSelect.options[bankSelect.selectedIndex];
+    
+    let bunga = 7.5; // Default fallback
+    if (selectedOption && selectedOption.value) {
+        bunga = parseFloat(selectedOption.getAttribute('data-bunga')) || 7.5;
+        // Limit tenor if needed
+        const maxTenor = parseInt(selectedOption.getAttribute('data-tenor')) || 30;
+        const tenorSelect = document.getElementById('tenor');
+        if (parseInt(tenorSelect.value) > maxTenor) {
+            tenorSelect.value = maxTenor;
+        }
+    }
+    
+    const tenor = parseInt(document.getElementById('tenor').value) || 15;
+    const pokok = hargaRumah - dp;
+    
+    const i = (bunga / 100) / 12;
+    const n = tenor * 12;
+    
+    let cicilan = 0;
+    if (pokok > 0) {
+        if (i === 0) {
+            cicilan = pokok / n;
+        } else {
+            cicilan = pokok * i * Math.pow(1 + i, n) / (Math.pow(1 + i, n) - 1);
+        }
+    }
+    cicilan = Math.round(cicilan);
+    const totalBayar = cicilan * n;
+    const totalBunga = totalBayar - pokok;
+    
+    const fmt = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+    
+    document.getElementById('calc_pokok').textContent = pokok > 0 ? fmt(pokok) : '-';
+    document.getElementById('calc_bunga').textContent = selectedOption && selectedOption.value ? bunga + '%' : '-';
+    document.getElementById('calc_total_bunga').textContent = totalBunga > 0 ? fmt(totalBunga) : '-';
+    document.getElementById('calc_total_bayar').textContent = totalBayar > 0 ? fmt(totalBayar) : '-';
+    document.getElementById('calc_cicilan').textContent = cicilan > 0 ? fmt(cicilan) : 'Rp 0';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dpInput = document.getElementById('uang_muka');
+    if (dpInput && dpInput.value) {
+        formatDPInput(dpInput);
+    }
+    updateCalculation();
+});
+</script>
 <style>@media(max-width:768px){#kpr-grid{grid-template-columns:1fr!important;}}</style>
 <?php require_once '../includes/footer.php'; ?>

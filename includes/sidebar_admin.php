@@ -9,7 +9,6 @@ function sidebar_admin($aktif = 'dashboard') {
         ['label'=>'Ke Beranda',      'ico'=>'🏠', 'key'=>'beranda',         'href'=>$base.'index.php'],
         ['label'=>'Dashboard',       'ico'=>'📊', 'key'=>'dashboard',       'href'=>$base.'admin/dashboard.php'],
         ['label'=>'Data Perumahan',  'ico'=>'🏙️', 'key'=>'perumahan',       'href'=>$base.'admin/perumahan/index.php'],
-        ['label'=>'Tipe Rumah',      'ico'=>'📐', 'key'=>'tipe_rumah',      'href'=>$base.'admin/tipe_rumah/index.php'],
         ['label'=>'Unit Rumah',      'ico'=>'🚪', 'key'=>'rumah',           'href'=>$base.'admin/rumah/index.php'],
         ['label'=>'Data Customer',   'ico'=>'👤', 'key'=>'customer',        'href'=>$base.'admin/customer/index.php'],
         ['label'=>'Marketing',       'ico'=>'📣', 'key'=>'marketing',       'href'=>$base.'admin/marketing/index.php'],

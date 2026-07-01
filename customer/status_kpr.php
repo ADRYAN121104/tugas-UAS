@@ -11,11 +11,10 @@ $id_pengajuan = (int)($_GET['id'] ?? 0);
 $all = $db->prepare("
     SELECT pk.*, p.nama_perumahan, p.alamat, p.maps_link,
            b.nama_bank, b.bunga_kpr,
-           r.blok, r.kode_unit, t.nama_tipe, t.harga 
+           r.blok, r.kode_unit, r.nama_tipe, r.harga 
     FROM pengajuan_kpr pk 
     JOIN rumah r ON pk.id_rumah = r.id_rumah 
     JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-    JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
     JOIN bank b ON pk.id_bank = b.id_bank 
     WHERE pk.id_user = ? 
     ORDER BY pk.id_pengajuan DESC
@@ -27,11 +26,10 @@ $kpr_aktif = null;
 $tracking = [];
 if ($id_pengajuan) {
     $stmt = $db->prepare("
-        SELECT pk.*, p.nama_perumahan, p.alamat, p.maps_link, b.nama_bank, b.bunga_kpr, r.blok, r.kode_unit, t.nama_tipe, t.harga 
+        SELECT pk.*, p.nama_perumahan, p.alamat, p.maps_link, b.nama_bank, b.bunga_kpr, r.blok, r.kode_unit, r.nama_tipe, r.harga 
         FROM pengajuan_kpr pk 
         JOIN rumah r ON pk.id_rumah = r.id_rumah 
         JOIN perumahan p ON r.id_perumahan = p.id_perumahan 
-        JOIN tipe_rumah t ON r.id_tipe = t.id_tipe 
         JOIN bank b ON pk.id_bank = b.id_bank 
         WHERE pk.id_pengajuan = ? AND pk.id_user = ?
     ");
