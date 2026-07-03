@@ -11,10 +11,9 @@ function sidebar_admin($aktif = 'dashboard') {
         ['label'=>'Data Perumahan',  'ico'=>'🏙️', 'key'=>'perumahan',       'href'=>$base.'admin/perumahan/index.php'],
         ['label'=>'Unit Rumah',      'ico'=>'🚪', 'key'=>'rumah',           'href'=>$base.'admin/rumah/index.php'],
         ['label'=>'Data Customer',   'ico'=>'👤', 'key'=>'customer',        'href'=>$base.'admin/customer/index.php'],
-        ['label'=>'Marketing',       'ico'=>'📣', 'key'=>'marketing',       'href'=>$base.'admin/marketing/index.php'],
         ['label'=>'Booking',         'ico'=>'📋', 'key'=>'booking',         'href'=>$base.'admin/booking/index.php'],
-        ['label'=>'Pembayaran',      'ico'=>'💰', 'key'=>'pembayaran',      'href'=>$base.'admin/pembayaran/index.php'],
         ['label'=>'Pengajuan KPR',   'ico'=>'📝', 'key'=>'pengajuan_kpr',  'href'=>$base.'admin/pengajuan_kpr/index.php'],
+        ['label'=>'Pembayaran',      'ico'=>'💰', 'key'=>'pembayaran',      'href'=>$base.'admin/pembayaran/index.php'],
         ['label'=>'Bank Rekanan',    'ico'=>'🏦', 'key'=>'bank',            'href'=>$base.'admin/bank/index.php'],
         ['label'=>'Laporan',         'ico'=>'📈', 'key'=>'laporan',         'href'=>$base.'admin/laporan/penjualan.php'],
     ];

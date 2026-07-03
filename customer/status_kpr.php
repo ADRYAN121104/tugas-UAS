@@ -48,6 +48,18 @@ if ($id_pengajuan) {
     $tracking = $tr->fetchAll();
 }
 
+// ── AJAX: Cek apakah ada perubahan status KPR (untuk real-time polling) ──
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'check_status' && $id_pengajuan > 0) {
+    header('Content-Type: application/json');
+    $stmt_check = $db->prepare("SELECT status_pengajuan FROM pengajuan_kpr WHERE id_pengajuan = ? AND id_user = ?");
+    $stmt_check->execute([$id_pengajuan, $id_user]);
+    $kpr_check = $stmt_check->fetch();
+    echo json_encode([
+        'status' => $kpr_check['status_pengajuan'] ?? null
+    ]);
+    exit;
+}
+
 $tahapan = [
     ['pengajuan_masuk', '📥', 'Pengajuan Masuk'],
     ['verifikasi_dokumen', '📋', 'Verifikasi Dokumen'],
@@ -247,5 +259,24 @@ require_once '../includes/header.php';
     <?php endif; ?>
 </main>
 <script src="../assets/js/script.js"></script>
+<?php if ($kpr_aktif): ?>
+<script>
+// ── Real-time polling: cek perubahan status KPR setiap 5 detik ──────────
+const currentStatus = <?= json_encode($status_skrg) ?>;
+const idPengajuan = <?= json_encode($id_pengajuan) ?>;
+
+setInterval(function() {
+    fetch(`status_kpr.php?id=${idPengajuan}&ajax=check_status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.status && data.status !== currentStatus) {
+                // Status berubah, refresh halaman secara otomatis untuk menampilkan alur baru
+                window.location.reload();
+            }
+        })
+        .catch(err => console.error("Gagal memeriksa status secara real-time:", err));
+}, 5000);
+</script>
+<?php endif; ?>
 <style>@media(max-width:768px){#kpr-info{grid-template-columns:1fr!important;}}</style>
 <?php require_once '../includes/footer.php'; ?>
