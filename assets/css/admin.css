@@ -256,3 +256,95 @@ select.form-control{
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#2563eb,#6366f1);border-radius:4px;}
 ::-webkit-scrollbar-thumb:hover{background:#1d4ed8;}
+
+/* ===================== GRADIENT TITLE ===================== */
+.gradient-title {
+  font-size:24px;font-weight:900;
+  background:linear-gradient(135deg,#1e40af 0%,#6366f1 50%,#8b5cf6 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;display:inline-block;line-height:1.2;
+}
+.gradient-title-green {
+  background:linear-gradient(135deg,#059669 0%,#0d9488 60%,#0891b2 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;display:inline-block;font-size:24px;font-weight:900;line-height:1.2;
+}
+.gradient-title-orange {
+  background:linear-gradient(135deg,#d97706 0%,#ea580c 60%,#dc2626 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;display:inline-block;font-size:24px;font-weight:900;line-height:1.2;
+}
+
+/* ===================== TOMBOL AKSI MODERN ===================== */
+.btn-edit {
+  background:linear-gradient(135deg,#6366f1,#4f46e5);
+  color:#fff;box-shadow:0 3px 10px rgba(99,102,241,.3);
+  display:inline-flex;align-items:center;gap:5px;padding:6px 13px;
+  border-radius:8px;font-size:12.5px;font-weight:700;border:none;
+  text-decoration:none;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;
+}
+.btn-edit:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(99,102,241,.45);color:#fff;}
+.btn-delete {
+  background:linear-gradient(135deg,#f43f5e,#e11d48);
+  color:#fff;box-shadow:0 3px 10px rgba(244,63,94,.25);
+  display:inline-flex;align-items:center;gap:5px;padding:6px 13px;
+  border-radius:8px;font-size:12.5px;font-weight:700;border:none;
+  text-decoration:none;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;
+}
+.btn-delete:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(244,63,94,.4);color:#fff;}
+
+.aksi-table{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
+
+/* ===================== MODAL KONFIRMASI HAPUS ===================== */
+#modal-hapus{
+  display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  z-index:9999;align-items:center;justify-content:center;
+}
+#modal-hapus.show{display:flex;animation:fadeInBg .2s ease;}
+@keyframes fadeInBg{from{opacity:0}to{opacity:1}}
+.modal-hapus-box{
+  background:#fff;border-radius:22px;padding:40px 36px;max-width:420px;
+  width:90%;text-align:center;animation:zoomInModal .25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 32px 80px rgba(0,0,0,.22);
+}
+@keyframes zoomInModal{from{transform:scale(.75);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-hapus-icon{
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(135deg,#fee2e2,#fecaca);
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;margin:0 auto 18px;
+  box-shadow:0 8px 24px rgba(244,63,94,.2);
+}
+.modal-hapus-box h3{font-size:20px;font-weight:900;color:#0f172a;margin-bottom:10px;}
+.modal-hapus-box p{color:#64748b;font-size:14px;line-height:1.6;margin-bottom:28px;}
+.modal-hapus-nama{
+  background:linear-gradient(135deg,#fee2e2,#fff1f2);
+  border:1px solid #fecaca;border-radius:10px;padding:10px 16px;
+  font-weight:800;color:#e11d48;font-size:14px;margin-bottom:24px;display:block;
+}
+.modal-hapus-btns{display:flex;gap:12px;justify-content:center;}
+.btn-modal-batal{
+  background:#f1f5f9;color:#475569;font-weight:700;font-size:14px;
+  padding:11px 24px;border-radius:10px;border:none;cursor:pointer;
+  transition:.2s;flex:1;
+}
+.btn-modal-batal:hover{background:#e2e8f0;}
+.btn-modal-hapus{
+  background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;
+  font-weight:800;font-size:14px;padding:11px 24px;border-radius:10px;
+  border:none;cursor:pointer;transition:.2s;flex:1;
+  box-shadow:0 4px 14px rgba(244,63,94,.35);
+}
+.btn-modal-hapus:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(244,63,94,.45);}
+
+/* ===================== CICILAN BADGE ===================== */
+.badge-belum{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-lunas{background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-terlambat{background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-pending{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-valid{background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.badge-ditolak{background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+

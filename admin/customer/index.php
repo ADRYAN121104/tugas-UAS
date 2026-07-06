@@ -154,7 +154,7 @@ $list_customer = $stmt->fetchAll();
             <?php else: ?>
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h2>👤 Akun Customer</h2>
+                        <h2 class="gradient-title">👤 Akun Customer</h2>
                         <p>Kelola data profil, email, no telepon/WhatsApp, dan akses akun customer</p>
                     </div>
                     <a href="index.php?action=tambah" class="btn btn-primary">➕ Tambah Customer</a>
@@ -202,8 +202,10 @@ $list_customer = $stmt->fetchAll();
                                             </td>
                                             <td><?= format_tanggal($c['created_at']) ?></td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $c['id_user'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
-                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $c['id_user'] ?>" data-nama="<?= htmlspecialchars($c['nama_lengkap']) ?>" class="btn btn-danger btn-sm">🗑️ Hapus</a>
+                                                <div class="aksi-table">
+                                                <a href="index.php?action=edit&id=<?= $c['id_user'] ?>" class="btn-edit">✏️ Edit</a>
+                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $c['id_user'] ?>" data-nama="<?= htmlspecialchars($c['nama_lengkap']) ?>" class="btn-delete">🗑️ Hapus</a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>

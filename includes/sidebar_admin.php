@@ -13,8 +13,9 @@ function sidebar_admin($aktif = 'dashboard') {
         ['label'=>'Data Customer',   'ico'=>'👤', 'key'=>'customer',        'href'=>$base.'admin/customer/index.php'],
         ['label'=>'Booking',         'ico'=>'📋', 'key'=>'booking',         'href'=>$base.'admin/booking/index.php'],
         ['label'=>'Pengajuan KPR',   'ico'=>'📝', 'key'=>'pengajuan_kpr',  'href'=>$base.'admin/pengajuan_kpr/index.php'],
-        ['label'=>'Pembayaran',      'ico'=>'💰', 'key'=>'pembayaran',      'href'=>$base.'admin/pembayaran/index.php'],
         ['label'=>'Bank Rekanan',    'ico'=>'🏦', 'key'=>'bank',            'href'=>$base.'admin/bank/index.php'],
+        ['label'=>'Cicilan KPR',     'ico'=>'💳', 'key'=>'cicilan',         'href'=>$base.'admin/cicilan/index.php'],
+        ['label'=>'Pembayaran DP',   'ico'=>'💰', 'key'=>'pembayaran',      'href'=>$base.'admin/pembayaran/index.php'],
         ['label'=>'Laporan',         'ico'=>'📈', 'key'=>'laporan',         'href'=>$base.'admin/laporan/penjualan.php'],
     ];
     $nama  = nama_user();

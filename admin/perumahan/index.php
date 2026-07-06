@@ -127,7 +127,7 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
             <?php else: ?>
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h2>🏙️ Komplek Perumahan</h2>
+                        <h2 class="gradient-title">🏙️ Komplek Perumahan</h2>
                         <p>Kelola data komplek perumahan, alamat, dan deskripsinya</p>
                     </div>
                     <a href="index.php?action=tambah" class="btn btn-primary">➕ Tambah Komplek</a>
@@ -238,8 +238,10 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
                                                 <?php endif; ?>
                                             </td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $p['id_perumahan'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
-                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $p['id_perumahan'] ?>" data-nama="<?= htmlspecialchars($p['nama_perumahan']) ?>" class="btn btn-danger btn-sm">🗑️ Hapus</a>
+                                                <div class="aksi-table">
+                                                <a href="index.php?action=edit&id=<?= $p['id_perumahan'] ?>" class="btn-edit">✏️ Edit</a>
+                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $p['id_perumahan'] ?>" data-nama="<?= htmlspecialchars($p['nama_perumahan']) ?>" class="btn-delete">🗑️ Hapus</a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>

@@ -195,7 +195,7 @@ $list_tipe = $db->query("SELECT * FROM tipe_rumah ORDER BY harga ASC")->fetchAll
             <?php else: ?>
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h2>📐 Tipe Rumah</h2>
+                        <h2 class="gradient-title">📐 Tipe Rumah</h2>
                         <p>Kelola data tipe, dimensi, jumlah kamar, harga, dan foto tipe rumah</p>
                     </div>
                     <a href="index.php?action=tambah" class="btn btn-primary">➕ Tambah Tipe</a>
@@ -232,8 +232,10 @@ $list_tipe = $db->query("SELECT * FROM tipe_rumah ORDER BY harga ASC")->fetchAll
                                             <td>🛏️ <?= $t['jumlah_kamar'] ?> &nbsp;|&nbsp; 🚿 <?= $t['jumlah_kamar_mandi'] ?></td>
                                             <td style="font-weight:700; color:var(--success);"><?= format_rupiah($t['harga']) ?></td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $t['id_tipe'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
-                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $t['id_tipe'] ?>" data-nama="<?= htmlspecialchars($t['nama_tipe']) ?>" class="btn btn-danger btn-sm">🗑️ Hapus</a>
+                                                <div class="aksi-table">
+                                                <a href="index.php?action=edit&id=<?= $t['id_tipe'] ?>" class="btn-edit">✏️ Edit</a>
+                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $t['id_tipe'] ?>" data-nama="<?= htmlspecialchars($t['nama_tipe']) ?>" class="btn-delete">🗑️ Hapus</a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>

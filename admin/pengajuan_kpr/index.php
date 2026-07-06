@@ -8,6 +8,66 @@ require_once '../../includes/sidebar_admin.php';
 $action = $_GET['action'] ?? '';
 $id     = (int)($_GET['id'] ?? 0);
 
+// ── Upload Sertifikat oleh Admin ─────────────────────────────────────────────
+if ($action === 'upload_sertifikat' && $id > 0 && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!empty($_FILES['sertifikat']['name'])) {
+        $dir = '../../uploads/sertifikat/';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $ext = strtolower(pathinfo($_FILES['sertifikat']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'])) {
+            set_flash('gagal', 'Format tidak valid. Gunakan JPG/PNG/PDF.');
+        } elseif ($_FILES['sertifikat']['size'] > 10 * 1024 * 1024) {
+            set_flash('gagal', 'File sertifikat terlalu besar (maks 10MB).');
+        } else {
+            $fname = 'sertifikat_kpr_' . $id . '_' . time() . '.' . $ext;
+            move_uploaded_file($_FILES['sertifikat']['tmp_name'], $dir . $fname);
+            $db->prepare("UPDATE pengajuan_kpr SET sertifikat=? WHERE id_pengajuan=?")->execute([$fname, $id]);
+            // Catat di tracking
+            $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, ?, ?, NOW())")
+               ->execute([$id, 'disetujui', '📄 Sertifikat KPR telah diunggah oleh admin. Silakan lakukan pembayaran DP untuk melanjutkan ke Akad Kredit.']);
+            set_flash('sukses', '✅ Sertifikat berhasil diupload. Customer akan melihat notifikasi untuk bayar DP.');
+        }
+    } else {
+        set_flash('gagal', 'Pilih file sertifikat terlebih dahulu.');
+    }
+    header("Location: index.php?action=detail&id=$id");
+    exit;
+}
+
+// ── Verifikasi Pembayaran DP oleh Admin ──────────────────────────────────────
+if ($action === 'verif_dp' && $id > 0) {
+    $id_dp = (int)($_GET['id_dp'] ?? 0);
+    $aksi  = $_GET['aksi'] ?? '';
+    if ($id_dp > 0 && in_array($aksi, ['valid', 'tolak'])) {
+        $dp_data = $db->prepare("SELECT * FROM pembayaran_dp WHERE id_dp=? AND id_pengajuan=?");
+        $dp_data->execute([$id_dp, $id]);
+        $dp = $dp_data->fetch();
+        if ($dp) {
+            if ($aksi === 'valid') {
+                $db->beginTransaction();
+                $db->prepare("UPDATE pembayaran_dp SET status_verifikasi='valid' WHERE id_dp=?")->execute([$id_dp]);
+                // Ubah status KPR ke akad_kredit
+                $kpr_r = $db->prepare("SELECT id_rumah FROM pengajuan_kpr WHERE id_pengajuan=?");
+                $kpr_r->execute([$id]);
+                $id_rumah = $kpr_r->fetchColumn();
+                $db->prepare("UPDATE pengajuan_kpr SET status_pengajuan='akad_kredit' WHERE id_pengajuan=?")->execute([$id]);
+                if ($id_rumah) $db->prepare("UPDATE rumah SET status='terjual' WHERE id_rumah=?")->execute([$id_rumah]);
+                $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'akad_kredit', ?, NOW())")
+                   ->execute([$id, '🤝 Pembayaran DP telah diverifikasi. Status berubah ke Akad Kredit. Jadwal cicilan akan segera dibuat.']);
+                $db->commit();
+                set_flash('sukses', '✅ DP diverifikasi VALID. Status KPR otomatis berubah ke Akad Kredit!');
+            } else {
+                $db->prepare("UPDATE pembayaran_dp SET status_verifikasi='ditolak' WHERE id_dp=?")->execute([$id_dp]);
+                $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'disetujui', ?, NOW())")
+                   ->execute([$id, '❌ Bukti pembayaran DP ditolak. Customer diminta mengirim ulang bukti DP yang valid.']);
+                set_flash('gagal', '❌ Pembayaran DP ditolak. Customer perlu kirim ulang bukti.');
+            }
+        }
+    }
+    header("Location: index.php?action=detail&id=$id");
+    exit;
+}
+
 // Proses Update Status KPR
 if ($action === 'update_status' && $id > 0 && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $status_baru   = trim($_POST['status_pengajuan'] ?? '');
@@ -36,12 +96,8 @@ if ($action === 'update_status' && $id > 0 && $_SERVER['REQUEST_METHOD'] === 'PO
         $track = $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, ?, ?, NOW())");
         $track->execute([$id, $status_baru, $keterangan]);
 
-        // Jika status KPR adalah akad_kredit, ubah status rumah menjadi terjual
-        if ($status_baru === 'akad_kredit' && $id_rumah) {
-            $db->prepare("UPDATE rumah SET status = 'terjual' WHERE id_rumah = ?")->execute([$id_rumah]);
-        }
         // Jika status ditolak, kembalikan status rumah menjadi tersedia & batalkan booking terkonfirmasi terkait
-        elseif ($status_baru === 'ditolak' && $id_rumah) {
+        if ($status_baru === 'ditolak' && $id_rumah) {
             $db->prepare("UPDATE rumah SET status = 'tersedia' WHERE id_rumah = ?")->execute([$id_rumah]);
             $db->prepare("UPDATE booking SET status_booking = 'dibatalkan' WHERE id_rumah = ? AND status_booking = 'dikonfirmasi'")->execute([$id_rumah]);
         }
@@ -88,6 +144,11 @@ if ($action === 'detail' && $id > 0) {
     $stmt_tr = $db->prepare("SELECT * FROM tracking_pengajuan WHERE id_pengajuan = ? ORDER BY tanggal_update DESC");
     $stmt_tr->execute([$id]);
     $tracking = $stmt_tr->fetchAll();
+
+    // Ambil data DP (pembayaran_dp)
+    $stmt_dp = $db->prepare("SELECT * FROM pembayaran_dp WHERE id_pengajuan=? ORDER BY created_at DESC LIMIT 1");
+    $stmt_dp->execute([$id]);
+    $dp_data = $stmt_dp->fetch();
 }
 
 // Ambil daftar pengajuan (untuk List)
@@ -258,13 +319,90 @@ $list_kpr = $stmt_list->fetchAll();
                         </div>
                     </div>
 
-                    <!-- Panel Samping: Update Status -->
+                    <!-- Panel Samping: Tindakan Admin -->
                     <div>
+                        <!-- PANEL: Upload Sertifikat (jika status disetujui) -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['disetujui', 'akad_kredit'])): ?>
+                        <div class="panel" style="margin-bottom:18px;">
+                            <div class="panel-header">
+                                <h3 style="background:linear-gradient(135deg,#059669,#0891b2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">📄 Sertifikat KPR</h3>
+                            </div>
+                            <div class="panel-body">
+                                <?php if ($kpr['sertifikat']): ?>
+                                    <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                                        <span style="font-size:24px;">✅</span>
+                                        <div>
+                                            <div style="font-weight:800;color:#065f46;font-size:13px;">Sertifikat sudah diupload</div>
+                                            <a href="../../uploads/sertifikat/<?= htmlspecialchars($kpr['sertifikat']) ?>" target="_blank" class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px;">📄 Lihat Sertifikat</a>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+                                        <div style="font-weight:700;color:#92400e;font-size:13px;margin-bottom:4px;">⏳ Belum ada sertifikat</div>
+                                        <div style="font-size:12px;color:#b45309;">Upload sertifikat agar customer bisa bayar DP</div>
+                                    </div>
+                                <?php endif; ?>
+                                <form method="POST" action="index.php?action=upload_sertifikat&id=<?= $kpr['id_pengajuan'] ?>" enctype="multipart/form-data">
+                                    <div class="form-group" style="margin-bottom:10px;">
+                                        <label>Upload / Ganti Sertifikat</label>
+                                        <input type="file" name="sertifikat" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+                                        <small class="form-hint">JPG/PNG/PDF, Maks 10MB</small>
+                                    </div>
+                                    <button type="submit" class="btn btn-success" style="width:100%;justify-content:center;">📤 Upload Sertifikat</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- PANEL: Verifikasi Pembayaran DP -->
+                        <?php if ($kpr['status_pengajuan'] === 'disetujui' && $kpr['sertifikat']): ?>
+                        <div class="panel" style="margin-bottom:18px;<?= (!$dp_data) ? 'opacity:.6;' : '' ?>">
+                            <div class="panel-header">
+                                <h3 style="background:linear-gradient(135deg,#d97706,#ea580c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">💰 Verifikasi Pembayaran DP</h3>
+                            </div>
+                            <div class="panel-body">
+                                <?php if (!$dp_data): ?>
+                                    <div style="text-align:center;padding:16px;color:#94a3b8;">
+                                        <div style="font-size:32px;margin-bottom:8px;">⏳</div>
+                                        <div style="font-size:13px;">Menunggu customer mengirim bukti pembayaran DP</div>
+                                    </div>
+                                <?php elseif ($dp_data['status_verifikasi'] === 'valid'): ?>
+                                    <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;text-align:center;">
+                                        <div style="font-size:28px;">✅</div>
+                                        <div style="font-weight:800;color:#065f46;margin-top:6px;">DP Sudah Diverifikasi</div>
+                                        <div style="font-size:13px;color:#059669;margin-top:4px;"><?= format_rupiah($dp_data['jumlah_dp']) ?></div>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fbbf24;border-radius:10px;padding:14px;margin-bottom:14px;">
+                                        <div style="font-weight:700;color:#92400e;font-size:13px;margin-bottom:4px;">⏳ Bukti DP Masuk</div>
+                                        <div style="font-size:14px;font-weight:800;color:#d97706;"><?= format_rupiah($dp_data['jumlah_dp']) ?></div>
+                                        <div style="font-size:12px;color:#b45309;margin-top:4px;">Dikirim: <?= format_datetime($dp_data['tanggal_bayar']) ?></div>
+                                        <?php if ($dp_data['bukti_dp']): ?>
+                                        <a href="../../uploads/bukti_dp/<?= htmlspecialchars($dp_data['bukti_dp']) ?>" target="_blank" class="btn btn-outline btn-sm" style="margin-top:8px;font-size:11px;width:100%;justify-content:center;">📎 Lihat Bukti DP</a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;gap:8px;">
+                                        <a href="index.php?action=verif_dp&id=<?= $kpr['id_pengajuan'] ?>&id_dp=<?= $dp_data['id_dp'] ?>&aksi=valid"
+                                           class="btn btn-success" style="width:100%;justify-content:center;"
+                                           onclick="return confirm('Konfirmasi DP VALID?\n\nIni akan otomatis mengubah status KPR ke AKAD KREDIT!')">
+                                            ✅ Valid → Konfirmasi Akad Kredit
+                                        </a>
+                                        <a href="index.php?action=verif_dp&id=<?= $kpr['id_pengajuan'] ?>&id_dp=<?= $dp_data['id_dp'] ?>&aksi=tolak"
+                                           class="btn-delete" style="width:100%;justify-content:center;text-align:center;"
+                                           onclick="return confirm('Tolak pembayaran DP ini?')">
+                                            ❌ Tolak DP
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php endif; ?>
+
                         <div class="panel" style="position:sticky; top:80px;">
-                            <div class="panel-header"><h3>🔄 Tindakan Admin</h3></div>
+                            <div class="panel-header"><h3>🔄 Update Status Manual</h3></div>
                             <div class="panel-body">
                                 <div style="margin-bottom:18px; text-align:center;">
-                                    <span style="font-size:12px; color:var(--muted);">Status Pengajuan Saat Ini:</span><br>
+                                    <span style="font-size:12px; color:var(--muted);">Status Saat Ini:</span><br>
                                     <div style="margin-top:6px;"><?= badge_kpr($kpr['status_pengajuan']) ?></div>
                                 </div>
 
@@ -276,7 +414,6 @@ $list_kpr = $stmt_list->fetchAll();
                                             <option value="verifikasi_dokumen" <?= $kpr['status_pengajuan'] === 'verifikasi_dokumen' ? 'selected' : '' ?>>📋 Verifikasi Dokumen</option>
                                             <option value="survey" <?= $kpr['status_pengajuan'] === 'survey' ? 'selected' : '' ?>>🔍 Survey Lokasi & BI Cek</option>
                                             <option value="disetujui" <?= $kpr['status_pengajuan'] === 'disetujui' ? 'selected' : '' ?>>✅ Disetujui Bank</option>
-                                            <option value="akad_kredit" <?= $kpr['status_pengajuan'] === 'akad_kredit' ? 'selected' : '' ?>>🤝 Akad Kredit (Terjual)</option>
                                             <option value="ditolak" <?= $kpr['status_pengajuan'] === 'ditolak' ? 'selected' : '' ?>>❌ Ditolak</option>
                                         </select>
                                     </div>
@@ -295,6 +432,7 @@ $list_kpr = $stmt_list->fetchAll();
                         </div>
                     </div>
                 </div>
+
             <?php else: ?>
                 <!-- LIST VIEW -->
                 <div class="page-header">

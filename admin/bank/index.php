@@ -125,7 +125,7 @@ $list_bank = $db->query("SELECT * FROM bank ORDER BY nama_bank ASC")->fetchAll()
                 <!-- LIST DATA -->
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h2>🏦 Bank Rekanan</h2>
+                        <h2 class="gradient-title">🏦 Bank Rekanan</h2>
                         <p>Kelola daftar mitra bank penyedia layanan pembiayaan KPR</p>
                     </div>
                     <a href="index.php?action=tambah" class="btn btn-primary">➕ Tambah Bank</a>
@@ -154,8 +154,10 @@ $list_bank = $db->query("SELECT * FROM bank ORDER BY nama_bank ASC")->fetchAll()
                                             <td><span class="badge" style="background:#dbeafe; color:#1e40af;"><?= $b['bunga_kpr'] ?>% p.a</span></td>
                                             <td><?= $b['tenor_maksimal'] ?> Tahun</td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $b['id_bank'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
-                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $b['id_bank'] ?>" data-nama="<?= htmlspecialchars($b['nama_bank']) ?>" class="btn btn-danger btn-sm">🗑️ Hapus</a>
+                                                <div class="aksi-table">
+                                                <a href="index.php?action=edit&id=<?= $b['id_bank'] ?>" class="btn-edit">✏️ Edit</a>
+                                                <a href="#" data-hapus="index.php?action=hapus&id=<?= $b['id_bank'] ?>" data-nama="<?= htmlspecialchars($b['nama_bank']) ?>" class="btn-delete">🗑️ Hapus</a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>

@@ -349,7 +349,7 @@ $list_rumah = $stmt->fetchAll();
             <?php else: ?>
                 <div class="page-header">
                     <div class="page-header-left">
-                        <h2>🚪 Unit Rumah</h2>
+                        <h2 class="gradient-title">🚪 Unit Rumah</h2>
                         <p>Kelola blok, kode unit, tipe, komplek perumahan, dan status penjualan</p>
                     </div>
                 </div>
@@ -405,7 +405,7 @@ $list_rumah = $stmt->fetchAll();
                                             <td style="font-weight: 700;"><?= format_rupiah($r['harga']) ?></td>
                                             <td><?= badge_unit($r['status']) ?></td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn btn-warning btn-sm">✏️ Edit</a>
+                                                <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn-edit">✏️ Edit Unit</a>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>
