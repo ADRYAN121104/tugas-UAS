@@ -162,10 +162,11 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
                                                     </div>
                                                     
                                                     <?php
-                                                    // Fetch units for this perumahan
+                                                    // Fetch units for this perumahan dengan JOIN tipe_rumah untuk fallback foto
                                                     $units_stmt = $db->prepare("
-                                                         SELECT r.* 
+                                                         SELECT r.*, t.foto as tipe_foto
                                                          FROM rumah r 
+                                                         LEFT JOIN tipe_rumah t ON r.id_tipe = t.id_tipe
                                                          WHERE r.id_perumahan = ?
                                                          ORDER BY r.blok, r.kode_unit
                                                     ");
@@ -179,7 +180,7 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
                                                         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:10px; margin-top:6px;">
                                                             <?php foreach($units as $u): ?>
                                                                 <?php
-                                                                // Fetch first photo from galeri_rumah if exists, otherwise fallback to unit foto
+                                                                // Fetch first photo from galeri_rumah if exists, otherwise fallback to unit foto / tipe foto
                                                                 $foto_src = '';
                                                                 $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
                                                                 $galeri_stmt->execute([$u['id_rumah']]);
@@ -188,6 +189,8 @@ $list_perumahan = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC
                                                                     $foto_src = '../../uploads/galeri_rumah/' . $gf;
                                                                 } elseif ($u['foto'] && file_exists('../../uploads/tipe_rumah/' . $u['foto'])) {
                                                                     $foto_src = '../../uploads/tipe_rumah/' . $u['foto'];
+                                                                } elseif (!empty($u['tipe_foto']) && file_exists('../../uploads/tipe_rumah/' . $u['tipe_foto'])) {
+                                                                    $foto_src = '../../uploads/tipe_rumah/' . $u['tipe_foto'];
                                                                 }
                                                                 ?>
                                                                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:8px; display:flex; gap:10px; align-items:center; position:relative; transition:var(--tr);">

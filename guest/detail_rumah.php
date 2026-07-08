@@ -7,8 +7,12 @@ require_once '../config/session.php';
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: katalog.php'); exit; }
 
-$stmt = $db->prepare("SELECT r.*,p.nama_perumahan,p.alamat,p.deskripsi as deskripsi_komplek,p.maps_link
-    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan WHERE r.id_rumah=?");
+$stmt = $db->prepare("SELECT r.*, p.nama_perumahan, p.alamat, p.deskripsi as deskripsi_komplek, p.maps_link,
+    t.foto as tipe_foto
+    FROM rumah r
+    JOIN perumahan p ON r.id_perumahan=p.id_perumahan
+    LEFT JOIN tipe_rumah t ON r.id_tipe=t.id_tipe
+    WHERE r.id_rumah=?");
 $stmt->execute([$id]);
 $unit = $stmt->fetch();
 if (!$unit) { header('Location: katalog.php'); exit; }
@@ -53,12 +57,16 @@ if (!empty($galeri_db)) {
         }
     }
 }
-// Fallback jika tidak ada foto sama sekali
-if (empty($all_images)) {
-    $all_images[] = '../uploads/tipe_rumah/interior.png';
-    $all_images[] = '../uploads/tipe_rumah/kitchen.png';
+// Fallback: coba tipe_rumah.foto
+if (empty($all_images) && !empty($unit['tipe_foto']) && file_exists('../uploads/tipe_rumah/' . $unit['tipe_foto'])) {
+    $all_images[] = '../uploads/tipe_rumah/' . $unit['tipe_foto'];
 }
-$primary_foto = $all_images[0];
+// Fallback gambar default jika tidak ada foto sama sekali
+if (empty($all_images)) {
+    if (file_exists('../uploads/tipe_rumah/interior.png'))  $all_images[] = '../uploads/tipe_rumah/interior.png';
+    if (file_exists('../uploads/tipe_rumah/kitchen.png'))   $all_images[] = '../uploads/tipe_rumah/kitchen.png';
+}
+$primary_foto = $all_images[0] ?? '';
 
 // Ambil denah dari database
 $dstmt = $db->prepare("SELECT gambar_denah FROM denah_rumah WHERE id_tipe = ?");

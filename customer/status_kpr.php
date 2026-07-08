@@ -575,15 +575,70 @@ require_once '../includes/header.php';
 
         <!-- ═══ NOTIFIKASI: Akad Kredit → Lihat Cicilan ═══ -->
         <?php if ($status_skrg === 'akad_kredit'): ?>
+        <?php
+        // Ambil data detail keuangan untuk laporan customer
+        $q_book_c = $db->prepare("SELECT booking_fee FROM booking WHERE id_user=? AND id_rumah=? ORDER BY id_booking DESC LIMIT 1");
+        $q_book_c->execute([$id_user, $kpr_aktif['id_rumah']]);
+        $booking_fee_c = (float)($q_book_c->fetchColumn() ?: 0);
+
+        $q_dp_c = $db->prepare("SELECT jumlah_dp FROM pembayaran_dp WHERE id_pengajuan=? AND status_verifikasi='valid' LIMIT 1");
+        $q_dp_c->execute([$id_pengajuan]);
+        $dp_paid_c = (float)($q_dp_c->fetchColumn() ?: 0);
+
+        $q_cic_c = $db->prepare("
+            SELECT COALESCE(SUM(jumlah_cicilan),0) as total_lunas,
+                   COUNT(*) as jml_lunas,
+                   (SELECT COUNT(*) FROM cicilan_kpr WHERE id_pengajuan=c.id_pengajuan) as total_angsuran
+            FROM cicilan_kpr c WHERE c.id_pengajuan=? AND c.status_bayar='lunas'
+        ");
+        $q_cic_c->execute([$id_pengajuan]);
+        $cic_c = $q_cic_c->fetch();
+        $cicilan_paid_c = (float)($cic_c['total_lunas'] ?? 0);
+        $jml_cicilan_lunas_c = (int)($cic_c['jml_lunas'] ?? 0);
+        $total_angsuran_c = (int)($cic_c['total_angsuran'] ?? 0);
+
+        $total_setor_c = $booking_fee_c + $dp_paid_c + $cicilan_paid_c;
+        $harga_rumah_c = (float)$kpr_aktif['harga'];
+        $sisa_properti_c = max(0, $harga_rumah_c - $total_setor_c);
+        ?>
         <div style="background:linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);border-radius:16px;padding:24px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden;">
             <div style="position:absolute;right:-10px;top:-10px;font-size:110px;opacity:.06;">💳</div>
             <div style="position:relative;display:flex;align-items:flex-start;gap:16px;">
                 <div style="font-size:40px;flex-shrink:0;">🤝</div>
-                <div>
+                <div style="flex:1;">
                     <div style="font-size:18px;font-weight:900;margin-bottom:6px;">Akad Kredit Selesai!</div>
-                    <div style="opacity:.8;font-size:13px;margin-bottom:14px;">Selamat! Rumah sudah resmi menjadi milik Anda. Bayar cicilan tepat waktu setiap bulan.</div>
-                    <a href="cicilan.php" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:10px 20px;color:#fff;font-weight:800;text-decoration:none;font-size:13px;">
-                        💳 Lihat Jadwal Cicilan & Bayar →
+                    <div style="opacity:.8;font-size:13px;margin-bottom:16px;">Selamat! Rumah sudah resmi menjadi milik Anda. Berikut adalah laporan ringkasan pembayaran Anda saat ini:</div>
+                    
+                    <!-- Laporan Ringkasan Pembayaran Customer -->
+                    <div style="background:rgba(255,255,255,0.08); border-radius:12px; padding:16px; margin-bottom:16px; font-size:13px; border:1px solid rgba(255,255,255,0.15);">
+                        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <span>🏙️ Harga Properti Rumah</span>
+                            <span style="font-weight:bold;"><?= format_rupiah($harga_rumah_c) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <span>📋 Booking Fee Terbayar</span>
+                            <span style="font-weight:bold; color:#6ee7b7;"><?= format_rupiah($booking_fee_c) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <span>💰 Uang Muka (DP) Terbayar</span>
+                            <span style="font-weight:bold; color:#fbbf24;"><?= format_rupiah($dp_paid_c) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <span>💳 Cicilan Terbayar (<?= $jml_cicilan_lunas_c ?> / <?= $total_angsuran_c ?> Bulan)</span>
+                            <span style="font-weight:bold; color:#6ee7b7;"><?= format_rupiah($cicilan_paid_c) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:10px 0 6px; font-size:14px; font-weight:900;">
+                            <span>💵 TOTAL YANG SUDAH DIBAYAR</span>
+                            <span style="color:#fbbf24;"><?= format_rupiah($total_setor_c) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(239,68,68,0.15); border-radius:6px; margin-top:8px; color:#f87171; font-weight:bold;">
+                            <span>🚨 Sisa Pelunasan Harga Rumah</span>
+                            <span><?= format_rupiah($sisa_properti_c) ?></span>
+                        </div>
+                    </div>
+
+                    <a href="cicilan.php" style="display:inline-flex;align-items:center;gap:8px;background:#fbbf24;color:#0f172a;border-radius:10px;padding:10px 20px;font-weight:800;text-decoration:none;font-size:13px;transition:.2s;">
+                        💳 Bayar Cicilan Bulanan & Lihat Detail →
                     </a>
                 </div>
             </div>

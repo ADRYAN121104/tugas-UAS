@@ -269,7 +269,74 @@ $list_kpr = $stmt_list->fetchAll();
                                     </div>
                                 </div>
                             </div>
+                        </div>                        <!-- REKAPITULASI PEMBAYARAN PROPERTI (Booking + DP + Cicilan) -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['disetujui', 'akad_kredit'])): ?>
+                        <?php
+                        $q_booking = $db->prepare("SELECT booking_fee FROM booking WHERE id_user=? AND id_rumah=? ORDER BY id_booking DESC LIMIT 1");
+                        $q_booking->execute([$kpr['id_user'], $kpr['id_rumah']]);
+                        $booking_fee = (float)($q_booking->fetchColumn() ?: 0);
+
+                        $q_dp = $db->prepare("SELECT jumlah_dp FROM pembayaran_dp WHERE id_pengajuan=? AND status_verifikasi='valid' LIMIT 1");
+                        $q_dp->execute([$id]);
+                        $dp_paid = (float)($q_dp->fetchColumn() ?: 0);
+
+                        $q_cicilan = $db->prepare("SELECT COALESCE(SUM(jumlah_cicilan),0) FROM cicilan_kpr WHERE id_pengajuan=? AND status_bayar='lunas'");
+                        $q_cicilan->execute([$id]);
+                        $cicilan_paid = (float)($q_cicilan->fetchColumn() ?: 0);
+
+                        $total_paid = $booking_fee + $dp_paid + $cicilan_paid;
+                        $harga_rumah = (float)$kpr['harga'];
+                        $sisa_harga_rumah = max(0, $harga_rumah - $total_paid);
+
+                        $q_cicilan_unpaid = $db->prepare("SELECT COALESCE(SUM(jumlah_cicilan),0) FROM cicilan_kpr WHERE id_pengajuan=? AND status_bayar='belum'");
+                        $q_cicilan_unpaid->execute([$id]);
+                        $cicilan_unpaid = (float)($q_cicilan_unpaid->fetchColumn() ?: 0);
+                        
+                        $persen_bayar = $harga_rumah > 0 ? round($total_paid / $harga_rumah * 100) : 0;
+                        ?>
+                        <div class="panel" style="border: 2px solid #3b82f6;">
+                            <div class="panel-header" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff;">
+                                <h3>📊 Rekapitulasi Pembayaran Keuangan Properti</h3>
+                            </div>
+                            <div class="panel-body">
+                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+                                    <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                                        <span style="font-size:11px; color:var(--muted); display:block;">Harga Rumah</span>
+                                        <b style="font-size:14px; color:#1e293b;"><?= format_rupiah($harga_rumah) ?></b>
+                                    </div>
+                                    <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                                        <span style="font-size:11px; color:var(--muted); display:block;">Booking Fee</span>
+                                        <b style="font-size:14px; color:var(--success);"><?= format_rupiah($booking_fee) ?></b>
+                                    </div>
+                                    <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                                        <span style="font-size:11px; color:var(--muted); display:block;">Uang Muka (DP) Valid</span>
+                                        <b style="font-size:14px; color:#d97706;"><?= format_rupiah($dp_paid) ?></b>
+                                    </div>
+                                    <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                                        <span style="font-size:11px; color:var(--muted); display:block;">Cicilan Bulanan Lunas</span>
+                                        <b style="font-size:14px; color:#3b82f6;"><?= format_rupiah($cicilan_paid) ?></b>
+                                    </div>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; background:#eff6ff; padding:12px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:14px;">
+                                    <div>
+                                        <span style="font-size:11px; color:#1e40af; font-weight:bold; display:block;">TOTAL SUDAH DIBAYAR</span>
+                                        <b style="font-size:16px; color:#1e3a8a;"><?= format_rupiah($total_paid) ?> (<?= $persen_bayar ?>%)</b>
+                                    </div>
+                                    <div>
+                                        <span style="font-size:11px; color:#ef4444; font-weight:bold; display:block;">SISA HARGA RUMAH</span>
+                                        <b style="font-size:16px; color:#ef4444;"><?= format_rupiah($sisa_harga_rumah) ?></b>
+                                    </div>
+                                </div>
+
+                                <?php if ($cicilan_unpaid > 0): ?>
+                                <div style="font-size:12px; color:var(--muted);">
+                                    ⏳ Estimasi sisa cicilan berjalan (KPR + Bunga): <b><?= format_rupiah($cicilan_unpaid) ?></b>
+                                </div>
+                                <?php endif; ?>
+                            </div>
                         </div>
+                        <?php endif; ?>
 
                         <!-- Dokumen Persyaratan -->
                         <div class="panel">
@@ -354,7 +421,7 @@ $list_kpr = $stmt_list->fetchAll();
                         </div>
 
                         <!-- PANEL: Verifikasi Pembayaran DP -->
-                        <?php if ($kpr['status_pengajuan'] === 'disetujui' && $kpr['sertifikat']): ?>
+                        <?php if ($kpr['status_pengajuan'] === 'disetujui'): ?>
                         <div class="panel" style="margin-bottom:18px;<?= (!$dp_data) ? 'opacity:.6;' : '' ?>">
                             <div class="panel-header">
                                 <h3 style="background:linear-gradient(135deg,#d97706,#ea580c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">💰 Verifikasi Pembayaran DP</h3>

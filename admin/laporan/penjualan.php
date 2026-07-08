@@ -58,6 +58,7 @@ $q_akad = $db->prepare("
            p.nama_perumahan, r.blok, r.kode_unit, r.nama_tipe, r.harga,
            b.nama_bank, b.bunga_kpr,
            dp.jumlah_dp, dp.status_verifikasi as dp_status,
+           (SELECT COALESCE(SUM(bk.booking_fee),0) FROM booking bk WHERE bk.id_user=pk.id_user AND bk.id_rumah=pk.id_rumah AND bk.status_booking='dikonfirmasi') as booking_fee,
            (SELECT COALESCE(SUM(c.jumlah_cicilan),0) FROM cicilan_kpr c WHERE c.id_pengajuan=pk.id_pengajuan AND c.status_bayar='lunas') as total_cicilan_dibayar,
            (SELECT COUNT(*) FROM cicilan_kpr c WHERE c.id_pengajuan=pk.id_pengajuan AND c.status_bayar='lunas') as jumlah_cicilan_lunas,
            (SELECT COUNT(*) FROM cicilan_kpr c WHERE c.id_pengajuan=pk.id_pengajuan) as total_angsuran
@@ -271,9 +272,10 @@ $cicilan_list = $q_cic->fetchAll();
                                     <th>Customer</th>
                                     <th>Properti</th>
                                     <th>Harga Rumah</th>
+                                    <th>Booking Fee</th>
                                     <th>DP Dibayar</th>
-                                    <th>Total Cicilan Dibayar</th>
-                                    <th>Total Keseluruhan</th>
+                                    <th>Total Cicilan</th>
+                                    <th>Total Keseluruhan (Total Bayar)</th>
                                     <th>Progres Cicilan</th>
                                     <th>Bank</th>
                                     <th>Tenor</th>
@@ -281,10 +283,10 @@ $cicilan_list = $q_cic->fetchAll();
                             </thead>
                             <tbody>
                             <?php if (empty($akad_list)): ?>
-                                <tr><td colspan="10" class="empty">Belum ada KPR yang selesai akad kredit pada periode ini.</td></tr>
+                                <tr><td colspan="13" class="empty">Belum ada KPR yang selesai akad kredit pada periode ini.</td></tr>
                             <?php else: $no=1; foreach ($akad_list as $a): ?>
                                 <?php
-                                $total_dibayar = ($a['jumlah_dp'] ?? 0) + $a['total_cicilan_dibayar'];
+                                $total_dibayar = $a['booking_fee'] + ($a['jumlah_dp'] ?? 0) + $a['total_cicilan_dibayar'];
                                 ?>
                                 <tr>
                                     <td><?= $no++ ?></td>
@@ -299,9 +301,10 @@ $cicilan_list = $q_cic->fetchAll();
                                         <small><?= htmlspecialchars($a['nama_tipe']) ?></small>
                                     </td>
                                     <td style="font-weight:800;color:var(--primary);"><?= format_rupiah($a['harga']) ?></td>
-                                    <td style="font-weight:700;color:var(--success);"><?= format_rupiah($a['jumlah_dp'] ?? 0) ?></td>
+                                    <td style="font-weight:700;color:var(--success);"><?= format_rupiah($a['booking_fee']) ?></td>
+                                    <td style="font-weight:700;color:#d97706;"><?= format_rupiah($a['jumlah_dp'] ?? 0) ?></td>
                                     <td style="font-weight:700;color:#6366f1;"><?= format_rupiah($a['total_cicilan_dibayar']) ?></td>
-                                    <td style="font-weight:900;color:var(--primary);background:#eff6ff;"><?= format_rupiah($total_dibayar) ?></td>
+                                    <td style="font-weight:900;color:#1e3a8a;background:#eff6ff;"><?= format_rupiah($total_dibayar) ?></td>
                                     <td>
                                         <?php if ($a['total_angsuran'] > 0): ?>
                                             <div style="display:flex;align-items:center;gap:6px;">
@@ -322,10 +325,18 @@ $cicilan_list = $q_cic->fetchAll();
                             <?php if (!empty($akad_list)): ?>
                             <tfoot>
                                 <tr style="background:linear-gradient(135deg,#f0f9ff,#eff6ff);font-weight:800;">
-                                    <td colspan="4" style="padding:12px 16px;font-weight:800;">TOTAL</td>
-                                    <td style="font-weight:900;color:var(--success);"><?= format_rupiah(array_sum(array_column($akad_list, 'jumlah_dp'))) ?></td>
+                                    <td colspan="3" style="padding:12px 16px;font-weight:800;text-align:right;">TOTAL REKAP</td>
+                                    <td style="font-weight:900;color:var(--primary);"><?= format_rupiah(array_sum(array_column($akad_list, 'harga'))) ?></td>
+                                    <td style="font-weight:900;color:var(--success);"><?= format_rupiah(array_sum(array_column($akad_list, 'booking_fee'))) ?></td>
+                                    <td style="font-weight:900;color:#d97706;"><?= format_rupiah(array_sum(array_column($akad_list, 'jumlah_dp'))) ?></td>
                                     <td style="font-weight:900;color:#6366f1;"><?= format_rupiah(array_sum(array_column($akad_list, 'total_cicilan_dibayar'))) ?></td>
-                                    <td style="font-weight:900;color:var(--primary);" colspan="4"><?= format_rupiah(array_sum(array_column($akad_list, 'jumlah_dp')) + array_sum(array_column($akad_list, 'total_cicilan_dibayar'))) ?></td>
+                                    <td style="font-weight:900;color:#1e3a8a;background:#eff6ff;" colspan="4">
+                                        <?= format_rupiah(
+                                            array_sum(array_column($akad_list, 'booking_fee')) +
+                                            array_sum(array_column($akad_list, 'jumlah_dp')) +
+                                            array_sum(array_column($akad_list, 'total_cicilan_dibayar'))
+                                        ) ?>
+                                    </td>
                                 </tr>
                             </tfoot>
                             <?php endif; ?>

@@ -146,13 +146,20 @@ require_once '../includes/header.php';
 $total_cicilan_paid = $kpr_aktif['total_lunas'] ?? 0;
 $total_dp_paid      = $dp_customer ? (float)$dp_customer['jumlah_dp'] : 0;
 $total_grand        = $total_dp_paid + $total_cicilan_paid;
+$harga_rumah        = (float)$kpr_aktif['harga'];
+$sisa_harga_rumah   = max(0, $harga_rumah - $total_grand);
 $sisa_cicilan = 0;
 if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
     $sisa_cicilan = ($kpr_aktif['jml_cicilan'] - $kpr_aktif['jml_lunas']) * $kpr_aktif['cicilan_per_bulan'];
 }
 ?>
 <div class="rekap-total">
-    <div style="font-size:12px;opacity:.6;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Rekap Total Pembayaran Anda</div>
+    <div style="font-size:12px;opacity:.6;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Rekap Total Pembayaran Properti Anda</div>
+    
+    <div class="rekap-row">
+        <span class="rekap-lbl">🏙️ Harga Rumah Properti</span>
+        <span class="rekap-val" style="color:#ffffff; font-size:15px;"><?= format_rupiah($harga_rumah) ?></span>
+    </div>
     <div class="rekap-row">
         <span class="rekap-lbl">💰 Uang Muka (DP) Terbayar</span>
         <span class="rekap-val" style="color:#fbbf24;"><?= format_rupiah($total_dp_paid) ?></span>
@@ -161,16 +168,20 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
         <span class="rekap-lbl">💳 Total Cicilan Terbayar (<?= $kpr_aktif['jml_lunas'] ?> bulan)</span>
         <span class="rekap-val" style="color:#6ee7b7;"><?= format_rupiah($total_cicilan_paid) ?></span>
     </div>
+    <div class="rekap-row" style="border-top:1px solid rgba(255,255,255,0.25); padding-top:10px;">
+        <span class="rekap-lbl" style="font-weight:bold;">💵 TOTAL SUDAH DIBAYAR (DP + CICILAN)</span>
+        <span class="rekap-grand" style="color:#fbbf24; font-size:16px; font-weight:900;"><?= format_rupiah($total_grand) ?></span>
+    </div>
+    <div class="rekap-row" style="background: rgba(239, 68, 68, 0.1); padding: 8px 10px; border-radius: 6px; margin-top: 8px;">
+        <span class="rekap-lbl" style="color:#f87171; font-weight:bold;">🚨 Sisa Harga Properti Belum Lunas</span>
+        <span class="rekap-val" style="color:#f87171; font-weight:900; font-size:15px;"><?= format_rupiah($sisa_harga_rumah) ?></span>
+    </div>
     <?php if ($sisa_cicilan > 0): ?>
     <div class="rekap-row">
-        <span class="rekap-lbl" style="color:#f87171;">📅 Sisa Cicilan Belum Lunas</span>
-        <span class="rekap-val" style="color:#f87171;"><?= format_rupiah($sisa_cicilan) ?></span>
+        <span class="rekap-lbl" style="opacity: 0.7;">📅 Estimasi Sisa Nilai Cicilan Berjalan</span>
+        <span class="rekap-val" style="opacity: 0.8;"><?= format_rupiah($sisa_cicilan) ?></span>
     </div>
     <?php endif; ?>
-    <div class="rekap-row">
-        <span class="rekap-lbl" style="font-size:15px;font-weight:800;">TOTAL SUDAH DIBAYAR</span>
-        <span class="rekap-grand"><?= format_rupiah($total_grand) ?></span>
-    </div>
 </div>
 
 <!-- INFO KPR -->

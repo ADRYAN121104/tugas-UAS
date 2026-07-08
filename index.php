@@ -6,14 +6,15 @@ require_once 'config/koneksi.php';
 require_once 'config/functions.php';
 require_once 'includes/header.php';
 
-$search = trim($_GET['s'] ?? '');
-if ($search) {
-    $stmt = $db->prepare("SELECT * FROM perumahan WHERE nama_perumahan LIKE ? OR alamat LIKE ? ORDER BY id_perumahan DESC");
-    $stmt->execute(["%$search%", "%$search%"]);
-} else {
-    $stmt = $db->query("SELECT * FROM perumahan ORDER BY id_perumahan DESC");
-}
-$list_perumahan = $stmt->fetchAll();
+// Ambil 3 unit rumah tersedia terbaru untuk ditampilkan di beranda
+$stmt_home_units = $db->query("SELECT r.*, p.nama_perumahan, p.alamat, t.foto as tipe_foto
+    FROM rumah r
+    JOIN perumahan p ON r.id_perumahan = p.id_perumahan
+    LEFT JOIN tipe_rumah t ON r.id_tipe = t.id_tipe
+    WHERE r.status = 'tersedia'
+    ORDER BY r.id_rumah DESC
+    LIMIT 3");
+$home_units = $stmt_home_units->fetchAll();
 
 $total_unit      = $db->query("SELECT COUNT(*) FROM rumah")->fetchColumn();
 $unit_tersedia   = $db->query("SELECT COUNT(*) FROM rumah WHERE status='tersedia'")->fetchColumn();
@@ -35,11 +36,11 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
         <h1>Temukan Rumah <span class="highlight">Impian Anda</span><br>Dengan KPR Mudah &amp; Cepat</h1>
         <p>Pilih dari ratusan unit rumah berkualitas, ajukan KPR melalui bank rekanan terpercaya kami. Proses transparan dan real-time tracking.</p>
 
-        <!-- Search bar -->
-        <form action="index.php" method="GET">
+        <!-- Search bar - Mengarah langsung ke katalog -->
+        <form action="guest/katalog.php" method="GET">
             <div class="hero-search">
                 <span style="font-size:18px;opacity:.6;">🔍</span>
-                <input type="text" name="s" placeholder="Cari nama komplek atau lokasi..." value="<?= htmlspecialchars($search) ?>">
+                <input type="text" name="s" placeholder="Cari nama komplek atau tipe...">
                 <button type="submit" class="btn btn-white btn-sm">Cari Sekarang</button>
             </div>
         </form>
@@ -133,25 +134,25 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
     </div>
 </section>
 
-<!-- DAFTAR PERUMAHAN -->
+<!-- DAFTAR UNIT RUMAH -->
 <section class="section">
     <div class="container">
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:16px;">
             <div>
                 <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(37,99,235,.07);color:#2563eb;padding:6px 16px;border-radius:50px;font-size:13px;font-weight:700;margin-bottom:12px;border:1px solid rgba(37,99,235,.15);">
-                    🏙️ Properti Pilihan
+                    🏠 Properti Pilihan
                 </div>
-                <h2 class="section-title"><?= $search ? "Hasil: \"".htmlspecialchars($search)."\"" : 'Komplek Perumahan Pilihan' ?></h2>
-                <p class="section-sub" style="margin-bottom:0;"><?= count($list_perumahan) ?> komplek ditemukan</p>
+                <h2 class="section-title">Rekomendasi Unit Terkini</h2>
+                <p class="section-sub" style="margin-bottom:0;">Temukan unit rumah siap huni terbaik dari kami</p>
             </div>
             <a href="guest/katalog.php" class="btn btn-outline">Lihat Semua Unit →</a>
         </div>
 
-        <?php if (empty($list_perumahan)): ?>
+        <?php if (empty($home_units)): ?>
             <div style="text-align:center;padding:80px 20px;">
                 <div style="font-size:72px;margin-bottom:16px;opacity:.5;">🏚️</div>
-                <h3 style="color:#475569;margin-bottom:8px;">Komplek tidak ditemukan</h3>
-                <p style="color:#94a3b8;">Coba kata kunci lain atau <a href="index.php">lihat semua komplek</a>.</p>
+                <h3 style="color:#475569;margin-bottom:8px;">Belum ada unit yang tersedia</h3>
+                <p style="color:#94a3b8;">Silakan hubungi admin atau kembali beberapa saat lagi.</p>
             </div>
         <?php else: ?>
         <div class="grid-3">
@@ -162,25 +163,46 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
                 'linear-gradient(135deg,#1e3a8a,#3b82f6)',
                 'linear-gradient(135deg,#0f172a,#3b82f6)',
             ];
-            foreach ($list_perumahan as $i => $p):
-                $unit_p = $db->prepare("SELECT COUNT(*) FROM rumah WHERE id_perumahan=? AND status='tersedia'");
-                $unit_p->execute([$p['id_perumahan']]);
-                $uts = $unit_p->fetchColumn();
+            foreach ($home_units as $i => $u):
+                // Prioritas: galeri_rumah → rumah.foto → tipe_rumah.foto
+                $card_foto = '';
+                $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
+                $galeri_stmt->execute([$u['id_rumah']]);
+                $gf = $galeri_stmt->fetchColumn();
+                if ($gf && file_exists('uploads/galeri_rumah/' . $gf)) {
+                    $card_foto = 'uploads/galeri_rumah/' . $gf;
+                } elseif ($u['foto'] && file_exists('uploads/tipe_rumah/' . $u['foto'])) {
+                    $card_foto = 'uploads/tipe_rumah/' . $u['foto'];
+                } elseif (!empty($u['tipe_foto']) && file_exists('uploads/tipe_rumah/' . $u['tipe_foto'])) {
+                    $card_foto = 'uploads/tipe_rumah/' . $u['tipe_foto'];
+                }
             ?>
             <div class="kartu" style="animation:slideUp .5s ease <?= $i*.1 ?>s both;">
-                <div class="kartu-img" style="background:<?= $grad[$i % 4] ?>;">
-                    <span style="font-size:60px;position:relative;z-index:1;">🏢</span>
-                    <span class="kartu-badge">Premium</span>
+                <div class="kartu-img" style="background:<?= $grad[$i % 4] ?>; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;">
+                    <?php if ($card_foto): ?>
+                        <img src="<?= $card_foto ?>" style="width:100%; height:100%; object-fit:cover;">
+                    <?php else: ?>
+                        <span style="font-size:60px;position:relative;z-index:1;">🏠</span>
+                    <?php endif; ?>
+                    <span class="kartu-badge"><?= htmlspecialchars($u['nama_tipe']) ?></span>
                 </div>
-                <div class="kartu-body">
-                    <h3 class="kartu-title"><?= htmlspecialchars($p['nama_perumahan']) ?></h3>
-                    <p class="kartu-loc">📍 <?= htmlspecialchars($p['alamat']) ?></p>
-                    <p class="kartu-desc"><?= htmlspecialchars(substr($p['deskripsi'] ?? '', 0, 110)) ?>...</p>
-                    <div class="kartu-info">
-                        <span><?= $uts > 0 ? "✅ $uts Unit Tersedia" : "🔒 Habis Terjual" ?></span>
+                <div class="kartu-body" style="padding:22px 24px;">
+                    <h3 class="kartu-title"><?= htmlspecialchars($u['nama_perumahan']) ?></h3>
+                    <p class="kartu-loc">📍 <?= htmlspecialchars($u['alamat']) ?> &nbsp;|&nbsp; Blok <?= htmlspecialchars($u['blok'].' - '.$u['kode_unit']) ?></p>
+                    <div class="kartu-info" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+                        <span style="font-size:12.5px; background:var(--bg); padding:5px 13px; border-radius:8px; color:var(--text); font-weight:700; border:1px solid var(--border);">📐 LT <?= $u['luas_tanah'] ?>m²</span>
+                        <span style="font-size:12.5px; background:var(--bg); padding:5px 13px; border-radius:8px; color:var(--text); font-weight:700; border:1px solid var(--border);">🏗️ LB <?= $u['luas_bangunan'] ?>m²</span>
+                        <span style="font-size:12.5px; background:var(--bg); padding:5px 13px; border-radius:8px; color:var(--text); font-weight:700; border:1px solid var(--border);">🛏️ <?= $u['jumlah_kamar'] ?> KT</span>
+                        <span style="font-size:12.5px; background:var(--bg); padding:5px 13px; border-radius:8px; color:var(--text); font-weight:700; border:1px solid var(--border);">🚿 <?= $u['jumlah_kamar_mandi'] ?> KM</span>
                     </div>
-                    <div class="kartu-footer">
-                        <a href="guest/katalog.php?id=<?= $p['id_perumahan'] ?>" class="btn btn-primary btn-sm btn-block">Lihat Unit →</a>
+                    <div class="kartu-price" style="font-size:22px; font-weight:900; color:var(--primary); margin-bottom:16px; letter-spacing:-.3px;"><?= format_rupiah($u['harga']) ?></div>
+                    <div class="kartu-footer" style="display:flex; gap:8px; border-top:1px solid var(--border); padding-top:16px;">
+                        <a href="guest/detail_rumah.php?id=<?= $u['id_rumah'] ?>" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;">Detail</a>
+                        <?php if (sudah_login() && role_user()==='customer'): ?>
+                            <a href="customer/pengajuan_kpr.php?id_rumah=<?= $u['id_rumah'] ?>" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;">Ajukan KPR</a>
+                        <?php else: ?>
+                            <a href="login.php" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;">Booking</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

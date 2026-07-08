@@ -13,8 +13,8 @@ $offset       = ($page - 1) * $per_page;
 
 $list_perumahan  = $db->query("SELECT * FROM perumahan ORDER BY nama_perumahan")->fetchAll();
 
-// Query total untuk pagination
-$where = "WHERE r.status = 'tersedia'";
+// Query total untuk pagination — memuat semua status unit
+$where = "WHERE 1=1";
 $params = [];
 if ($id_perumahan) { $where .= " AND r.id_perumahan=?"; $params[] = $id_perumahan; }
 if ($search)       { $where .= " AND (p.nama_perumahan LIKE ? OR r.nama_tipe LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
@@ -26,9 +26,11 @@ $total_pages  = max(1, ceil($total_units / $per_page));
 $page         = min($page, $total_pages);
 $offset       = ($page - 1) * $per_page;
 
-// Query unit dengan limit
-$stmt = $db->prepare("SELECT r.*, p.nama_perumahan, p.alamat
-    FROM rumah r JOIN perumahan p ON r.id_perumahan=p.id_perumahan
+// Query unit dengan limit — LEFT JOIN tipe_rumah untuk fallback foto
+$stmt = $db->prepare("SELECT r.*, p.nama_perumahan, p.alamat, t.foto as tipe_foto
+    FROM rumah r
+    JOIN perumahan p ON r.id_perumahan=p.id_perumahan
+    LEFT JOIN tipe_rumah t ON r.id_tipe=t.id_tipe
     $where ORDER BY r.harga ASC LIMIT $per_page OFFSET $offset");
 $stmt->execute($params);
 $units = $stmt->fetchAll();
@@ -92,7 +94,7 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
         <div class="kartu">
             <div class="kartu-img" style="background:#f1f5f9;overflow:hidden;">
                 <?php
-                // Fetch first photo from galeri_rumah if exists, otherwise fallback to tipe_rumah.foto
+                // Prioritas: galeri_rumah → rumah.foto → tipe_rumah.foto
                 $card_foto = '';
                 $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
                 $galeri_stmt->execute([$u['id_rumah']]);
@@ -101,6 +103,8 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
                     $card_foto = '../uploads/galeri_rumah/' . $gf;
                 } elseif ($u['foto'] && file_exists('../uploads/tipe_rumah/' . $u['foto'])) {
                     $card_foto = '../uploads/tipe_rumah/' . $u['foto'];
+                } elseif (!empty($u['tipe_foto']) && file_exists('../uploads/tipe_rumah/' . $u['tipe_foto'])) {
+                    $card_foto = '../uploads/tipe_rumah/' . $u['tipe_foto'];
                 }
                 ?>
                 <?php if ($card_foto): ?>
@@ -109,6 +113,19 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
                     <div style="background:<?= $grad[$i%4] ?>;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:60px;">🏠</div>
                 <?php endif; ?>
                 <span class="kartu-badge"><?= htmlspecialchars($u['nama_tipe']) ?></span>
+                <span style="position:absolute; top:14px; right:14px; z-index:1; padding:4px 10px; border-radius:50px; font-size:11px; font-weight:800; text-transform:uppercase; 
+                     <?php 
+                     if ($u['status'] === 'tersedia') {
+                         echo 'background:#10b981; color:#fff; box-shadow:0 2px 8px rgba(16,185,129,.4);';
+                     } elseif ($u['status'] === 'booking') {
+                         echo 'background:#f59e0b; color:#fff; box-shadow:0 2px 8px rgba(245,158,11,.4);';
+                     } else {
+                         echo 'background:#ef4444; color:#fff; box-shadow:0 2px 8px rgba(239,68,68,.4);';
+                     }
+                     ?>
+                 ">
+                     <?= $u['status'] === 'tersedia' ? 'Tersedia' : ($u['status'] === 'booking' ? 'Booked' : 'Terjual') ?>
+                 </span>
             </div>
             <div class="kartu-body">
                 <h3 class="kartu-title"><?= htmlspecialchars($u['nama_perumahan']) ?></h3>
@@ -122,10 +139,16 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
                 <div class="kartu-price"><?= format_rupiah($u['harga']) ?></div>
                 <div class="kartu-footer" style="display:flex;gap:8px;">
                     <a href="detail_rumah.php?id=<?= $u['id_rumah'] ?>" class="btn btn-outline btn-sm" style="flex:1;justify-content:center;">Detail</a>
-                    <?php if (sudah_login() && role_user()==='customer'): ?>
-                        <a href="../customer/pengajuan_kpr.php?id_rumah=<?= $u['id_rumah'] ?>" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Ajukan KPR</a>
+                    <?php if ($u['status'] === 'tersedia'): ?>
+                        <?php if (sudah_login() && role_user()==='customer'): ?>
+                            <a href="../customer/pengajuan_kpr.php?id_rumah=<?= $u['id_rumah'] ?>" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Ajukan KPR</a>
+                        <?php else: ?>
+                            <a href="../login.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Booking</a>
+                        <?php endif; ?>
                     <?php else: ?>
-                        <a href="../login.php" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Booking</a>
+                        <button class="btn btn-gray btn-sm" style="flex:1;justify-content:center;cursor:not-allowed;" disabled>
+                            <?= $u['status'] === 'booking' ? '🔒 Booked' : '🏠 Terjual' ?>
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>

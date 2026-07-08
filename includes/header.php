@@ -16,7 +16,7 @@ $current_dir = basename(dirname($_SERVER['SCRIPT_NAME']));
     <title><?= isset($page_title) ? htmlspecialchars($page_title) : 'Sistem KPR Perumahan' ?></title>
     <meta name="description" content="<?= isset($page_desc) ? htmlspecialchars($page_desc) : 'Portal KPR Perumahan terpercaya - temukan rumah impian dan ajukan kredit dengan mudah.' ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="stylesheet" href="<?= $base ?>assets/css/style.css?v=<?= date('YmdH') ?>">
+    <link rel="stylesheet" href="<?= $base ?>assets/css/style.css?v=<?= date('YmdHi') ?>">
 </head>
 <body>
 

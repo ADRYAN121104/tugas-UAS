@@ -307,20 +307,41 @@ $total_dp_valid = (float)$db->query("SELECT COALESCE(SUM(jumlah_dp),0) FROM pemb
                         $persen_lunas = count($cicilan_detail) > 0 ? round(count(array_filter($cicilan_detail, fn($c) => $c['status_bayar']==='lunas')) / count($cicilan_detail) * 100) : 0;
                         $persen_harga = $harga_rumah > 0 ? round($total_sudah_bayar / $harga_rumah * 100) : 0;
                         ?>
-                                <div style="font-size:20px;font-weight:900;color:var(--success);"><?= format_rupiah($total_lunas) ?></div>
+                        
+                        <!-- REKAP DETAIL PEMBAYARAN -->
+                        <div style="padding: 20px; background: linear-gradient(135deg, #f0fdf4, #eff6ff); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">Harga Properti</div>
+                                <div style="font-size: 16px; font-weight: 800; color: var(--primary);"><?= format_rupiah($harga_rumah) ?></div>
                             </div>
-                            <div style="text-align:center;">
-                                <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">Sisa Cicilan</div>
-                                <div style="font-size:20px;font-weight:900;color:var(--danger);"><?= format_rupiah($total_belum) ?></div>
+                            <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">DP (Uang Muka) Terbayar</div>
+                                <div style="font-size: 16px; font-weight: 800; color: #d97706;"><?= format_rupiah($dp_val) ?></div>
                             </div>
-                            <div style="text-align:center;">
-                                <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Progres Pembayaran</div>
-                                <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;max-width:200px;margin:0 auto 4px;">
-                                    <div style="height:100%;width:<?= $persen ?>%;background:linear-gradient(90deg,#10b981,#059669);border-radius:5px;"></div>
-                                </div>
-                                <small style="font-weight:700;color:var(--success);"><?= $persen ?>% Lunas</small>
+                            <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">Cicilan Terbayar</div>
+                                <div style="font-size: 16px; font-weight: 800; color: var(--success);"><?= format_rupiah($total_lunas) ?></div>
+                            </div>
+                            <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase;">Total Sudah Dibayar</div>
+                                <div style="font-size: 16px; font-weight: 800; color: #1e3a8a;"><?= format_rupiah($total_sudah_bayar) ?> (<?= $persen_harga ?>%)</div>
+                            </div>
+                            <div style="background: #fff5f5; padding: 12px; border-radius: 8px; border: 1px solid #fee2e2; text-align: center; grid-column: span 2;">
+                                <div style="font-size: 11px; color: #991b1b; margin-bottom: 4px; text-transform: uppercase; font-weight: bold;">Sisa Belum Dibayar (KPR + Bunga)</div>
+                                <div style="font-size: 16px; font-weight: 800; color: #ef4444;"><?= format_rupiah(max(0, $sisa_harga)) ?> (Sisa Cicilan Berjalan: <?= format_rupiah($total_belum) ?>)</div>
                             </div>
                         </div>
+
+                        <div style="padding: 16px 20px; background: #fff; border-bottom: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 13px; font-weight: 700; color: #374151;">Progres Cicilan (Bulan)</span>
+                                <span style="font-size: 13px; font-weight: bold; color: var(--success);"><?= count(array_filter($cicilan_detail, fn($c) => $c['status_bayar']==='lunas')) ?> / <?= count($cicilan_detail) ?> Bulan (<?= $persen_lunas ?>%)</span>
+                            </div>
+                            <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
+                                <div style="height: 100%; width: <?= $persen_lunas ?>%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 6px;"></div>
+                            </div>
+                        </div>
+
                         <div class="tbl-wrap">
                             <table>
                                 <thead>
