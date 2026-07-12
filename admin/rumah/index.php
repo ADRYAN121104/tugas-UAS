@@ -9,10 +9,37 @@ $action = $_GET['action'] ?? '';
 $id = (int)($_GET['id'] ?? 0);
 $redirect = $_GET['redirect'] ?? $_POST['redirect'] ?? 'index.php';
 
-// Proses Hapus - Dibatasi
+// Proses Hapus Unit Rumah (beserta semua foto dan galeri)
 if ($action === 'hapus' && $id > 0) {
-    set_flash('gagal', 'Fitur menghapus unit dinonaktifkan sementara.');
-    header('Location: ' . $redirect);
+    try {
+        // Ambil data unit dan foto profil
+        $stmt_r = $db->prepare("SELECT * FROM rumah WHERE id_rumah = ?");
+        $stmt_r->execute([$id]);
+        $unit = $stmt_r->fetch();
+        if ($unit) {
+            // Hapus foto profil/sampul dari server
+            if ($unit['foto'] && file_exists('../../uploads/tipe_rumah/' . $unit['foto'])) {
+                unlink('../../uploads/tipe_rumah/' . $unit['foto']);
+            }
+            // Hapus semua foto galeri dari server
+            $galeri_list = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ?");
+            $galeri_list->execute([$id]);
+            foreach ($galeri_list->fetchAll() as $g) {
+                $path = '../../uploads/galeri_rumah/' . $g['foto'];
+                if (file_exists($path)) unlink($path);
+            }
+            // Hapus data galeri dari database
+            $db->prepare("DELETE FROM galeri_rumah WHERE id_rumah = ?")->execute([$id]);
+            // Hapus data unit dari database
+            $db->prepare("DELETE FROM rumah WHERE id_rumah = ?")->execute([$id]);
+            set_flash('sukses', 'Unit rumah Blok ' . $unit['blok'] . '-' . $unit['kode_unit'] . ' berhasil dihapus.');
+        } else {
+            set_flash('gagal', 'Unit tidak ditemukan.');
+        }
+    } catch (PDOException $e) {
+        set_flash('gagal', 'Gagal menghapus unit: ' . $e->getMessage());
+    }
+    header('Location: index.php');
     exit;
 }
 
@@ -364,77 +391,79 @@ $list_rumah = $stmt->fetchAll();
                             <div class="form-group">
                                 <label>Deskripsi / Spesifikasi Lengkap Unit</label>
                                 <textarea name="deskripsi" class="form-control" placeholder="Tuliskan spesifikasi teknis unit..." style="min-height:100px;"><?= htmlspecialchars($_POST['deskripsi'] ?? $rumah['deskripsi'] ?? '') ?></textarea>
-                            </div>
 
-                            <!-- BAGIAN ATAS: EDIT PROFIL RUMAH (FOTO SAMPUL UTAMA) -->
-                            <div class="form-group" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-top:20px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
-                                <label style="font-weight:800; color:#1e3a8a; display:block; margin-bottom:4px; font-size:14.5px;">🖼️ Edit Profil Rumah (Foto Sampul Utama)</label>
-                                <p style="font-size:12.5px; color:#64748b; margin-top:2px; margin-bottom:12px; line-height:1.45;">
-                                    Pilih 1 foto terbaik yang akan menjadi sampul utama unit ini di halaman katalog.
+                            <!-- BAGIAN ATAS: PROFIL RUMAH (1 FOTO SAMPUL) -->
+                            <div style="background:#eef4ff; border:2px solid #3b82f6; border-radius:14px; padding:22px; margin-top:24px; margin-bottom:20px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                                    <span style="background:#3b82f6; color:#fff; font-size:12px; font-weight:800; padding:3px 10px; border-radius:20px;">FOTO PROFIL</span>
+                                    <label style="font-weight:800; color:#1e40af; font-size:15px; margin:0;">Foto Profil Rumah</label>
+                                </div>
+                                <p style="font-size:12.5px; color:#64748b; margin:0 0 14px; line-height:1.5;">
+                                    Foto ini akan tampil pertama di halaman <strong>katalog produk</strong>. Pilih 1 foto terbaik sebagai foto utama unit.
                                 </p>
-                                <input type="file" name="foto_profil" class="form-control" accept="image/*" data-preview="imgPrev" onchange="var t=document.getElementById('noImgText'); if(t) t.style.display='none';" style="border: 1px solid #cbd5e1; background: #fff; margin-bottom:15px;">
+                                <input type="file" name="foto_profil" accept="image/*" 
+                                    onchange="
+                                        var f=this.files[0]; if(!f) return;
+                                        var r=new FileReader(); 
+                                        r.onload=function(e){ 
+                                            document.getElementById('imgPrev').src=e.target.result;
+                                            document.getElementById('imgPrev').style.display='block';
+                                            var t=document.getElementById('noImgText'); if(t) t.style.display='none';
+                                        }; r.readAsDataURL(f);"
+                                    style="display:block; width:100%; padding:8px; border:1px solid #93c5fd; border-radius:8px; background:#fff; font-size:13px; cursor:pointer; margin-bottom:14px;">
                                 
-                                <!-- Preview Foto Sampul Utama Unit Saat Ini -->
-                                <div style="margin-top:10px;">
-                                    <label style="font-weight:700; color:#334155; font-size:13px; display:block; margin-bottom:8px;">Foto Sampul Saat Ini:</label>
-                                    <?php 
-                                    $foto_src = '';
-                                    $display = 'none';
-                                    if (isset($rumah['foto']) && $rumah['foto'] && file_exists('../../uploads/tipe_rumah/' . $rumah['foto'])) {
-                                        $foto_src = '../../uploads/tipe_rumah/' . $rumah['foto'];
-                                        $display = 'block';
-                                    }
-                                    ?>
-                                    <img id="imgPrev" src="<?= $foto_src ?>" style="max-height:200px; border-radius:12px; display:<?= $display ?>; border:1px solid #cbd5e1; box-shadow:var(--shadow);">
+                                <?php 
+                                $foto_src = '';
+                                $display = 'none';
+                                if (isset($rumah['foto']) && $rumah['foto'] && file_exists('../../uploads/tipe_rumah/' . $rumah['foto'])) {
+                                    $foto_src = '../../uploads/tipe_rumah/' . $rumah['foto'];
+                                    $display = 'block';
+                                }
+                                ?>
+                                <div style="margin-top:4px;">
+                                    <label style="font-size:12px; color:#64748b; font-weight:600; display:block; margin-bottom:8px;">Foto Profil Saat Ini:</label>
+                                    <img id="imgPrev" src="<?= $foto_src ?>" style="max-height:220px; max-width:100%; border-radius:10px; display:<?= $display ?>; border:2px solid #93c5fd; box-shadow:0 2px 8px rgba(59,130,246,.15);">
                                     <?php if ($display === 'none'): ?>
-                                        <div id="noImgText" style="padding:15px; background:#fff; border:1px dashed #cbd5e1; border-radius:12px; text-align:center; color:#94a3b8; font-size:13px;">Belum ada foto sampul utama yang diupload.</div>
+                                        <div id="noImgText" style="padding:20px; background:#fff; border:1px dashed #93c5fd; border-radius:10px; text-align:center; color:#94a3b8; font-size:13px;">
+                                            📷 Belum ada foto profil — pilih file di atas
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
 
-                            <!-- BAGIAN BAWAH: DETAIL RUMAH (GALERI FOTO DETAIL) -->
-                            <div class="form-group" style="background:#f0fdf4; border:1px solid #d1fae5; border-radius:14px; padding:20px; margin-top:20px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
-                                <label style="font-weight:800; color:#065f46; display:block; margin-bottom:4px; font-size:14.5px;">🏡 Detail Rumah (Galeri Foto Banyak)</label>
-                                <p style="font-size:12.5px; color:#475569; margin-top:2px; margin-bottom:12px; line-height:1.45;">
-                                    Pilih beberapa foto sekaligus untuk dimasukkan ke galeri foto detail unit rumah ini (kamar tidur, dapur, toilet, tampak belakang, dll).
+                            <!-- BAGIAN BAWAH: FOTO DETAIL RUMAH (GALERI BANYAK) -->
+                            <div style="background:#f0fdf4; border:2px solid #10b981; border-radius:14px; padding:22px; margin-top:0; margin-bottom:20px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                                    <span style="background:#10b981; color:#fff; font-size:12px; font-weight:800; padding:3px 10px; border-radius:20px;">FOTO DETAIL</span>
+                                    <label style="font-weight:800; color:#065f46; font-size:15px; margin:0;">Foto Detail Rumah</label>
+                                </div>
+                                <p style="font-size:12.5px; color:#475569; margin:0 0 14px; line-height:1.5;">
+                                    Foto-foto ini tampil di halaman <strong>detail unit</strong>. Upload beberapa foto sekaligus (kamar tidur, dapur, toilet, tampak samping, dll).
                                 </p>
-                                <input type="file" name="foto_galeri[]" multiple class="form-control" accept="image/*" style="border: 1px solid #cbd5e1; background: #fff; margin-bottom:15px;">
+                                <input type="file" name="foto_galeri[]" multiple accept="image/*"
+                                    style="display:block; width:100%; padding:8px; border:1px solid #6ee7b7; border-radius:8px; background:#fff; font-size:13px; cursor:pointer; margin-bottom:14px;">
                                 
-                                <!-- Daftar Foto Galeri Saat Ini -->
                                 <?php if ($action === 'edit' && !empty($galeri)): ?>
-                                    <div style="margin-top:10px;">
-                                        <label style="font-weight:700; color:#334155; font-size:13px; display:block; margin-bottom:8px;">Foto Detail / Galeri Saat Ini (Klik ✕ untuk menghapus):</label>
-                                        <div id="galeri-grid" style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div style="margin-top:4px;">
+                                        <label style="font-size:12px; color:#64748b; font-weight:600; display:block; margin-bottom:10px;">Foto Detail Saat Ini (klik ✕ untuk hapus):</label>
+                                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
                                             <?php foreach ($galeri as $g): ?>
-                                                <div style="position:relative; width:120px; height:120px; border:2px solid var(--border); border-radius:10px; overflow:hidden; box-shadow: var(--shadow);">
+                                                <div style="position:relative; width:130px; height:130px; border-radius:10px; overflow:hidden; border:2px solid #6ee7b7; box-shadow:0 2px 6px rgba(0,0,0,.08);">
                                                     <img src="../../uploads/galeri_rumah/<?= htmlspecialchars($g['foto']) ?>" style="width:100%; height:100%; object-fit:cover;">
                                                     <a href="index.php?action=hapus_foto&id=<?= $g['id_galeri'] ?>" 
-                                                       onclick="return confirm('Apakah Anda yakin ingin menghapus foto ini dari galeri?')"
-                                                       style="position:absolute; top:6px; right:6px; background:rgba(239,68,68,0.9); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:11px; font-weight:800; border:1px solid #fff; transition: var(--tr);"
-                                                       onmouseover="this.style.background='#ef4444'; this.style.transform='scale(1.1)';"
-                                                       onmouseout="this.style.background='rgba(239,68,68,0.9)'; this.style.transform='scale(1)';">✕</a>
+                                                       onclick="return confirm('Hapus foto ini dari galeri?')"
+                                                       title="Hapus foto ini"
+                                                       style="position:absolute; top:5px; right:5px; background:#ef4444; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:13px; font-weight:900; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.3);">✕</a>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
                                 <?php elseif ($action === 'edit'): ?>
-                                    <div id="galeri-grid" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; margin-bottom:20px;"></div>
+                                    <div style="padding:16px; background:#fff; border:1px dashed #6ee7b7; border-radius:10px; text-align:center; color:#94a3b8; font-size:13px;">
+                                        🏠 Belum ada foto detail — pilih beberapa file di atas
+                                    </div>
                                 <?php endif; ?>
                             </div>
-
-                            <?php if ($action === 'edit'): ?>
-                             <!-- AJAX Quick Upload Galeri (Quick Action) -->
-                             <div class="form-group" style="margin-top:20px; background:#f0f9ff; border:2px dashed #3b82f6; border-radius:12px; padding:18px; margin-bottom:20px;">
-                                 <label style="color:#1d4ed8; font-weight:800; display:block; margin-bottom:4px;">⚡ Upload Foto Galeri Cepat (AJAX)</label>
-                                 <p style="font-size:12.5px; color:#64748b; margin:4px 0 10px; line-height:1.4;">
-                                     Pilih beberapa foto detail rumah dan upload secara cepat ke galeri unit ini secara instan.
-                                 </p>
-                                 <input type="file" id="ajax_foto_galeri" multiple accept="image/*" style="margin-bottom:12px; display:block; width:100%; border:1px solid #cbd5e1; background:#fff; padding:6px; border-radius:8px;">
-                                 
-                                 <button type="button" id="btn_ajax_upload" class="btn btn-primary btn-sm">📤 Upload Detail Foto Sekarang</button>
-                                 <span id="ajax_upload_status" style="margin-left:12px; font-size:13px;"></span>
-                             </div>
-                             <?php endif; ?>
 
                             <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--border);">
                                 <button type="submit" class="btn btn-primary">💾 Simpan Data</button>
@@ -547,7 +576,13 @@ $list_rumah = $stmt->fetchAll();
                                             <td style="font-weight: 700;"><?= format_rupiah($r['harga']) ?></td>
                                             <td><?= badge_unit($r['status']) ?></td>
                                             <td style="text-align:center;">
-                                                <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn-edit">✏️ Edit Unit</a>
+                                                <div style="display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
+                                                    <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn-edit" style="white-space:nowrap;">✏️ Edit</a>
+                                                    <a href="index.php?action=hapus&id=<?= $r['id_rumah'] ?>" 
+                                                       onclick="return confirm('Hapus unit Blok <?= addslashes($r['blok']) ?>-<?= addslashes($r['kode_unit']) ?>?\n\nSemua foto profil dan galeri unit ini akan ikut terhapus. Tindakan ini tidak dapat dibatalkan.')"
+                                                       style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; background:#ef4444; color:#fff; border-radius:6px; font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; transition:background .18s;"
+                                                       onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">🗑️ Hapus</a>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; endif; ?>
@@ -560,55 +595,6 @@ $list_rumah = $stmt->fetchAll();
         </main>
     </div>
     <script src="../../assets/js/script.js"></script>
-    <?php if ($action === 'edit' && $id > 0): ?>
-    <script>
-    (function() {
-        var btnUpload = document.getElementById('btn_ajax_upload');
-        var fileInput = document.getElementById('ajax_foto_galeri');
-        var statusEl  = document.getElementById('ajax_upload_status');
-        var galeriGrid = document.getElementById('galeri-grid');
-        if (!btnUpload) return;
 
-        btnUpload.addEventListener('click', function() {
-            if (!fileInput.files.length) {
-                statusEl.textContent = '⚠️ Pilih foto terlebih dahulu.';
-                statusEl.style.color = '#dc2626';
-                return;
-            }
-            var fd = new FormData();
-            for (var i = 0; i < fileInput.files.length; i++) {
-                fd.append('foto_galeri[]', fileInput.files[i]);
-            }
-            btnUpload.disabled = true;
-            statusEl.textContent = '⏳ Mengupload...';
-            statusEl.style.color = '#2563eb';
-
-            fetch('index.php?action=upload_galeri_ajax&id=<?= $id ?>', {
-                method: 'POST',
-                body: fd
-            })
-            .then(function(r){ return r.json(); })
-            .then(function(data) {
-                btnUpload.disabled = false;
-                if (data.ok) {
-                    statusEl.textContent = '✅ ' + data.uploaded + ' foto berhasil diupload!';
-                    statusEl.style.color = '#16a34a';
-                    fileInput.value = '';
-                    // Reload halaman untuk refresh galeri grid
-                    setTimeout(function(){ location.reload(); }, 1200);
-                } else {
-                    statusEl.textContent = '❌ Gagal: ' + (data.errors ? data.errors.join(', ') : 'Error tidak diketahui.');
-                    statusEl.style.color = '#dc2626';
-                }
-            })
-            .catch(function(e) {
-                btnUpload.disabled = false;
-                statusEl.textContent = '❌ Error koneksi: ' + e.message;
-                statusEl.style.color = '#dc2626';
-            });
-        });
-    })();
-    </script>
-    <?php endif; ?>
 </body>
 </html>

@@ -42,11 +42,20 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
 <main class="container-wide" style="padding:40px 24px 60px;">
     <?php tampil_flash(); ?>
 
-    <!-- Header -->
-    <div style="margin-bottom:28px;">
-        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(37,99,235,.07);color:#2563eb;padding:5px 14px;border-radius:50px;font-size:12.5px;font-weight:700;margin-bottom:12px;border:1px solid rgba(37,99,235,.15);">🏠 Katalog Properti</div>
-        <h1 class="section-title section-title-gradient">Temukan Unit Impian Anda</h1>
-        <p class="section-sub">Tersedia <?= $total_units ?> unit siap dipesan dari berbagai komplek pilihan</p>
+    <!-- Header Katalog -->
+    <div style="margin-bottom:48px; padding:40px 0 24px; text-align:center;">
+        <!-- Badge pill -->
+        <div style="display:inline-flex; align-items:center; gap:7px; background:linear-gradient(135deg,#f5f3ff,#ede9fe); color:#6d28d9; padding:8px 20px; border-radius:50px; font-size:12px; font-weight:800; margin-bottom:20px; border:1px solid #ddd6fe; letter-spacing:1px; text-transform:uppercase;">
+            ✨ Temukan Hunian Masa Depan
+        </div>
+        <!-- Judul Gradien -->
+        <h1 class="section-title-gradient">Katalog Properti Eksklusif<br>
+            <span style="background:linear-gradient(135deg,#06b6d4 0%,#3b82f6 50%,#8b5cf6 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Pilihan Terbaik Anda</span>
+        </h1>
+        <!-- Sub-teks -->
+        <p style="color:#64748b; font-size:17px; font-weight:500; margin:16px auto 0; max-width:600px;">
+            Jelajahi berbagai pilihan unit perumahan berkualitas dengan fasilitas premium yang dirancang khusus untuk kenyamanan keluarga Anda.
+        </p>
     </div>
 
     <!-- Filter -->
@@ -94,17 +103,21 @@ $query_base = http_build_query(array_filter(['id'=>$id_perumahan,'s'=>$search]))
         <div class="kartu">
             <div class="kartu-img" style="background:#f1f5f9;overflow:hidden;">
                 <?php
-                // Prioritas: galeri_rumah → rumah.foto → tipe_rumah.foto
+                // Prioritas: rumah.foto (profil/sampul) → galeri_rumah → tipe_rumah.foto
                 $card_foto = '';
-                $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
-                $galeri_stmt->execute([$u['id_rumah']]);
-                $gf = $galeri_stmt->fetchColumn();
-                if ($gf && file_exists('../uploads/galeri_rumah/' . $gf)) {
-                    $card_foto = '../uploads/galeri_rumah/' . $gf;
-                } elseif ($u['foto'] && file_exists('../uploads/tipe_rumah/' . $u['foto'])) {
+                if ($u['foto'] && file_exists('../uploads/tipe_rumah/' . $u['foto'])) {
+                    // Foto profil utama — ini yang tampil di katalog
                     $card_foto = '../uploads/tipe_rumah/' . $u['foto'];
                 } elseif (!empty($u['tipe_foto']) && file_exists('../uploads/tipe_rumah/' . $u['tipe_foto'])) {
                     $card_foto = '../uploads/tipe_rumah/' . $u['tipe_foto'];
+                } else {
+                    // Fallback: ambil foto pertama dari galeri jika tidak ada foto profil
+                    $galeri_stmt = $db->prepare("SELECT foto FROM galeri_rumah WHERE id_rumah = ? ORDER BY id_galeri ASC LIMIT 1");
+                    $galeri_stmt->execute([$u['id_rumah']]);
+                    $gf = $galeri_stmt->fetchColumn();
+                    if ($gf && file_exists('../uploads/galeri_rumah/' . $gf)) {
+                        $card_foto = '../uploads/galeri_rumah/' . $gf;
+                    }
                 }
                 ?>
                 <?php if ($card_foto): ?>
