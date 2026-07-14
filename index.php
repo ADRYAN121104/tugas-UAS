@@ -143,7 +143,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
             <div style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#eff6ff,#eef2ff);color:#4f46e5;padding:7px 20px;border-radius:50px;font-size:12px;font-weight:800;margin-bottom:18px;border:1px solid #c7d2fe;letter-spacing:.5px;text-transform:uppercase;">
                 ⭐ Keunggulan Kami
             </div>
-            <h2 style="font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#1e40af 0%,#4f46e5 45%,#7c3aed 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Mengapa Pilih RumahKPR?</h2>
+            <h2 style="font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Mengapa Pilih RumahKPR?</h2>
             <p style="color:#64748b;font-size:16px;max-width:520px;margin:0 auto;">Proses KPR yang <strong style="color:#4f46e5;">transparan</strong>, cepat, dan terpercaya untuk keluarga Indonesia</p>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;">
@@ -159,7 +159,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
                 <div class="fitur-ico-v2" style="background:<?= $f[3] ?>">
                     <span><?= $f[0] ?></span>
                 </div>
-                <h4 style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:10px;"><?= $f[1] ?></h4>
+                <h4 style="font-size:16px;font-weight:800;margin-bottom:10px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"><?= $f[1] ?></h4>
                 <p style="font-size:13.5px;color:#64748b;line-height:1.65;"><?= $f[2] ?></p>
             </div>
             <?php endforeach; ?>
@@ -174,7 +174,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
             <div style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);color:#7c3aed;padding:7px 20px;border-radius:50px;font-size:12px;font-weight:800;margin-bottom:18px;border:1px solid #e9d5ff;letter-spacing:.5px;text-transform:uppercase;">
                 🚀 Cara Kerja
             </div>
-            <h2 style="font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#7c3aed 0%,#2563eb 50%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Proses KPR Semudah 4 Langkah</h2>
+            <h2 style="font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Proses KPR Semudah 4 Langkah</h2>
             <p style="color:#64748b;font-size:16px;max-width:500px;margin:0 auto;">Dari pilih rumah sampai <strong style="color:#7c3aed;">kunci di tangan</strong>, semua bisa dilakukan secara online</p>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;">
@@ -189,7 +189,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
             <div class="step-card-v2">
                 <div class="step-num-v2" style="background:<?= $s[4] ?>;"><?= $s[0] ?></div>
                 <div style="font-size:38px;margin:10px 0 14px;"><?= $s[1] ?></div>
-                <h4 style="font-weight:800;color:#0f172a;margin-bottom:10px;font-size:15.5px;"><?= $s[2] ?></h4>
+                <h4 style="font-weight:800;margin-bottom:10px;font-size:15.5px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"><?= $s[2] ?></h4>
                 <p style="font-size:13.5px;color:#64748b;line-height:1.65;"><?= $s[3] ?></p>
             </div>
             <?php endforeach; ?>
@@ -207,7 +207,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
                 <div style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#eff6ff,#ecfdf5);color:#0891b2;padding:7px 18px;border-radius:50px;font-size:12px;font-weight:800;margin-bottom:14px;border:1px solid #bae6fd;letter-spacing:.5px;text-transform:uppercase;">
                     🏠 Properti Pilihan
                 </div>
-                <h2 style="font-size:clamp(24px,3.5vw,38px);font-weight:900;letter-spacing:-.5px;margin-bottom:10px;background:linear-gradient(135deg,#0f766e 0%,#0891b2 40%,#2563eb 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Rekomendasi Unit Terkini</h2>
+                <h2 style="font-size:clamp(24px,3.5vw,38px);font-weight:900;letter-spacing:-.5px;margin-bottom:10px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Rekomendasi Unit Terkini</h2>
                 <p style="color:#64748b;font-size:15px;margin:0;">Temukan unit rumah siap huni terbaik dari kami</p>
             </div>
             <a href="guest/katalog.php" class="btn btn-outline">Lihat Semua Unit →</a>
@@ -286,7 +286,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
             <div style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#059669;padding:7px 20px;border-radius:50px;font-size:12px;font-weight:800;margin-bottom:18px;border:1px solid #6ee7b7;letter-spacing:.5px;text-transform:uppercase;">
                 🏦 Bank Rekanan
             </div>
-            <h2 style="font-size:clamp(24px,3.5vw,38px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#059669 0%,#10b981 45%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Bank Rekanan Terpercaya</h2>
+            <h2 style="font-size:clamp(24px,3.5vw,38px);font-weight:900;letter-spacing:-.5px;margin-bottom:14px;background:linear-gradient(135deg,#1e3a8a 0%,#0077b6 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Bank Rekanan Terpercaya</h2>
             <p style="color:#64748b;font-size:16px;max-width:480px;margin:0 auto;">Pilih dari bank rekanan kami dengan bunga KPR paling kompetitif di Indonesia</p>
         </div>
         <?php $banks = $db->query("SELECT * FROM bank ORDER BY bunga_kpr ASC")->fetchAll(); ?>
@@ -306,7 +306,7 @@ $total_customer  = $db->query("SELECT COUNT(*) FROM users WHERE role='customer'"
 <!-- CTA SECTION -->
 <section class="section-cta">
     <div class="section-cta-content">
-        <h2 style="font-size:clamp(26px,4vw,46px);font-weight:900;margin-bottom:16px;letter-spacing:-.5px;background:linear-gradient(135deg,#fff 0%,#bfdbfe 40%,#ddd6fe 70%,#e9d5ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Siap Mewujudkan<br>Rumah Impian Anda?</h2>
+        <h2 style="font-size:clamp(26px,4vw,46px);font-weight:900;margin-bottom:16px;letter-spacing:-.5px;background:linear-gradient(135deg,#ffffff 0%,#90e0ef 50%,#00b4d8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Siap Mewujudkan<br>Rumah Impian Anda?</h2>
         <p style="opacity:.8;font-size:17px;margin-bottom:36px;max-width:500px;margin-left:auto;margin-right:auto;color:#cbd5e1;">Daftar sekarang dan mulai perjalanan KPR Anda bersama kami. Proses cepat, transparan, terpercaya.</p>
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
             <a href="register.php" class="btn btn-accent btn-lg">🚀 Daftar Gratis Sekarang</a>

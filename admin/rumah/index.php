@@ -296,7 +296,7 @@ $list_rumah = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Unit Rumah - RumahKPR Admin</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
 </head>
 <body>
     <?php sidebar_admin('rumah'); ?>
@@ -576,12 +576,11 @@ $list_rumah = $stmt->fetchAll();
                                             <td style="font-weight: 700;"><?= format_rupiah($r['harga']) ?></td>
                                             <td><?= badge_unit($r['status']) ?></td>
                                             <td style="text-align:center;">
-                                                <div style="display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
-                                                    <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn-edit" style="white-space:nowrap;">✏️ Edit</a>
+                                                <div class="aksi-table">
+                                                    <a href="index.php?action=edit&id=<?= $r['id_rumah'] ?>" class="btn-edit">✏️ Edit</a>
                                                     <a href="index.php?action=hapus&id=<?= $r['id_rumah'] ?>" 
                                                        onclick="return confirm('Hapus unit Blok <?= addslashes($r['blok']) ?>-<?= addslashes($r['kode_unit']) ?>?\n\nSemua foto profil dan galeri unit ini akan ikut terhapus. Tindakan ini tidak dapat dibatalkan.')"
-                                                       style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; background:#ef4444; color:#fff; border-radius:6px; font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; transition:background .18s;"
-                                                       onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">🗑️ Hapus</a>
+                                                       class="btn-delete">🗑️ Hapus</a>
                                                 </div>
                                             </td>
                                         </tr>

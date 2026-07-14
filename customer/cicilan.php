@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_cicilan_bayar'])) 
 
 // ── AMBIL DATA KPR CUSTOMER ─────────────────────────────────────────────────
 $stmt = $db->prepare("
-    SELECT pk.id_pengajuan, pk.uang_muka, pk.tenor, pk.status_pengajuan,
+    SELECT pk.id_pengajuan, pk.uang_muka, pk.tenor, pk.status_pengajuan, pk.id_rumah,
            u.nama_lengkap, b.nama_bank, b.bunga_kpr,
            p.nama_perumahan, r.blok, r.kode_unit, r.harga,
            (SELECT COUNT(*) FROM cicilan_kpr c WHERE c.id_pengajuan=pk.id_pengajuan) as jml_cicilan,
@@ -73,6 +73,8 @@ $id_pengajuan = (int)($_GET['id'] ?? ($list_kpr[0]['id_pengajuan'] ?? 0));
 $kpr_aktif = null;
 $cicilan_list = [];
 $dp_customer = null;
+$booking_fee = 0.0;
+
 if ($id_pengajuan > 0) {
     foreach ($list_kpr as $k) {
         if ($k['id_pengajuan'] == $id_pengajuan) { $kpr_aktif = $k; break; }
@@ -86,6 +88,11 @@ if ($id_pengajuan > 0) {
         $dp_q = $db->prepare("SELECT * FROM pembayaran_dp WHERE id_pengajuan=? AND status_verifikasi='valid' LIMIT 1");
         $dp_q->execute([$id_pengajuan]);
         $dp_customer = $dp_q->fetch();
+
+        // Ambil Booking Fee
+        $q_bf = $db->prepare("SELECT booking_fee FROM booking WHERE id_user=? AND id_rumah=? AND status_booking='dikonfirmasi' ORDER BY id_booking DESC LIMIT 1");
+        $q_bf->execute([$id_user, $kpr_aktif['id_rumah']]);
+        $booking_fee = (float)($q_bf->fetchColumn() ?: 0);
     }
 }
 
@@ -143,14 +150,19 @@ require_once '../includes/header.php';
 
 <!-- ── REKAP TOTAL PEMBAYARAN (DP + Cicilan) ─────────────────────────────── -->
 <?php
-$total_cicilan_paid = $kpr_aktif['total_lunas'] ?? 0;
+$total_cicilan_paid = (float)($kpr_aktif['total_lunas'] ?? 0);
 $total_dp_paid      = $dp_customer ? (float)$dp_customer['jumlah_dp'] : 0;
-$total_grand        = $total_dp_paid + $total_cicilan_paid;
+// Total Bayar = Booking Fee + DP + Cicilan
+$total_grand        = $booking_fee + $total_dp_paid + $total_cicilan_paid;
 $harga_rumah        = (float)$kpr_aktif['harga'];
 $sisa_harga_rumah   = max(0, $harga_rumah - $total_grand);
-$sisa_cicilan = 0;
-if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
-    $sisa_cicilan = ($kpr_aktif['jml_cicilan'] - $kpr_aktif['jml_lunas']) * $kpr_aktif['cicilan_per_bulan'];
+
+// Menghitung sisa kali cicilan tergantung sisa harga properti
+$sisa_kali_cicilan = 0;
+if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
+    $sisa_kali_cicilan = ceil($sisa_harga_rumah / $kpr_aktif['cicilan_per_bulan']);
+    // Batasi agar tidak melebihi sisa tenor bulan aslinya
+    $sisa_kali_cicilan = min($kpr_aktif['jml_cicilan'] - $kpr_aktif['jml_lunas'], $sisa_kali_cicilan);
 }
 ?>
 <div class="rekap-total">
@@ -161,6 +173,10 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
         <span class="rekap-val" style="color:#ffffff; font-size:15px;"><?= format_rupiah($harga_rumah) ?></span>
     </div>
     <div class="rekap-row">
+        <span class="rekap-lbl">📋 Booking Fee Terbayar</span>
+        <span class="rekap-val" style="color:#a7f3d0;"><?= format_rupiah($booking_fee) ?></span>
+    </div>
+    <div class="rekap-row">
         <span class="rekap-lbl">💰 Uang Muka (DP) Terbayar</span>
         <span class="rekap-val" style="color:#fbbf24;"><?= format_rupiah($total_dp_paid) ?></span>
     </div>
@@ -169,19 +185,17 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
         <span class="rekap-val" style="color:#6ee7b7;"><?= format_rupiah($total_cicilan_paid) ?></span>
     </div>
     <div class="rekap-row" style="border-top:1px solid rgba(255,255,255,0.25); padding-top:10px;">
-        <span class="rekap-lbl" style="font-weight:bold;">💵 TOTAL SUDAH DIBAYAR (DP + CICILAN)</span>
+        <span class="rekap-lbl" style="font-weight:bold;">💵 TOTAL SUDAH DIBAYAR (BF + DP + CICILAN)</span>
         <span class="rekap-grand" style="color:#fbbf24; font-size:16px; font-weight:900;"><?= format_rupiah($total_grand) ?></span>
     </div>
-    <div class="rekap-row" style="background: rgba(239, 68, 68, 0.1); padding: 8px 10px; border-radius: 6px; margin-top: 8px;">
+    <div class="rekap-row" style="background: rgba(239, 68, 68, 0.15); padding: 8px 10px; border-radius: 6px; margin-top: 8px;">
         <span class="rekap-lbl" style="color:#f87171; font-weight:bold;">🚨 Sisa Harga Properti Belum Lunas</span>
         <span class="rekap-val" style="color:#f87171; font-weight:900; font-size:15px;"><?= format_rupiah($sisa_harga_rumah) ?></span>
     </div>
-    <?php if ($sisa_cicilan > 0): ?>
-    <div class="rekap-row">
-        <span class="rekap-lbl" style="opacity: 0.7;">📅 Estimasi Sisa Nilai Cicilan Berjalan</span>
-        <span class="rekap-val" style="opacity: 0.8;"><?= format_rupiah($sisa_cicilan) ?></span>
+    <div class="rekap-row" style="background: rgba(59, 130, 246, 0.15); padding: 8px 10px; border-radius: 6px; margin-top: 6px;">
+        <span class="rekap-lbl" style="color:#60a5fa; font-weight:bold;">📅 Sisa Kali Cicilan Untuk Lunas</span>
+        <span class="rekap-val" style="color:#60a5fa; font-weight:900; font-size:15px;"><?= $sisa_kali_cicilan ?> Kali Cicilan Lagi</span>
     </div>
-    <?php endif; ?>
 </div>
 
 <!-- INFO KPR -->
@@ -239,8 +253,8 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
     <div style="background:#eff6ff;border-bottom:1px solid #dbeafe;padding:14px 22px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:22px;">🏦</span>
         <div style="font-size:13px;line-height:1.7;">
-            Transfer ke: <b>BCA 1234567890</b> a.n. <b>PT RumahKPR Indonesia</b> ·
-            Nominal: <b style="color:#2563eb;"><?= $kpr_aktif['cicilan_per_bulan'] ? format_rupiah($kpr_aktif['cicilan_per_bulan']) : 'Sesuai tagihan' ?></b>
+            Transfer ke: <b>BCA 1234567890</b> a.n. <b>PT RumahKPR Indonesia</b> &bull;
+            Nominal normal: <b style="color:#2563eb;"><?= $kpr_aktif['cicilan_per_bulan'] ? format_rupiah($kpr_aktif['cicilan_per_bulan']) : 'Sesuai tagihan' ?></b>
         </div>
     </div>
 
@@ -250,21 +264,42 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
             <tr style="background:linear-gradient(135deg,#f8faff,#f0f4ff);">
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Bulan</th>
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Jatuh Tempo</th>
-                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Cicilan</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Tagihan Riil</th>
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Status</th>
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Upload Bukti Bayar</th>
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($cicilan_list as $c): ?>
-            <?php $is_late = ($c['status_bayar']==='belum' && strtotime($c['tanggal_jatuh_tempo']) < time()); ?>
+        <?php 
+        // Lacak sisa harga rumah dinamis untuk membatasi tagihan terakhir agar tidak melebihi harga rumah
+        $sisa_harga_berjalan = $harga_rumah - $booking_fee - $total_dp_paid;
+        
+        foreach ($cicilan_list as $c): 
+            $is_late = ($c['status_bayar']==='belum' && strtotime($c['tanggal_jatuh_tempo']) < time());
+            
+            // Tagihan riil dibatasi sisa harga berjalan agar tidak melebihi harga rumah
+            $tagihan_riil = min((float)$c['jumlah_cicilan'], $sisa_harga_berjalan);
+            if ($tagihan_riil < 0) $tagihan_riil = 0;
+            
+            // Jika sudah lunas, kurangi sisa harga berjalan
+            if ($c['status_bayar'] === 'lunas') {
+                $sisa_harga_berjalan = max(0, $sisa_harga_berjalan - $c['jumlah_cicilan']);
+            }
+            ?>
             <tr style="border-bottom:1px solid #f1f5f9;<?= $is_late ? 'background:#fff5f5;' : '' ?>">
                 <td style="padding:12px 16px;">
                     <b style="color:#0f172a;">Bulan <?= $c['bulan_ke'] ?></b>
                     <?= $is_late ? ' <span style="font-size:10px;color:#ef4444;font-weight:700;">⚠️ Terlambat</span>' : '' ?>
                 </td>
                 <td style="padding:12px 16px;color:#64748b;font-size:12px;"><?= format_tanggal($c['tanggal_jatuh_tempo']) ?></td>
-                <td style="padding:12px 16px;font-weight:800;color:#2563eb;"><?= format_rupiah($c['jumlah_cicilan']) ?></td>
+                <td style="padding:12px 16px;font-weight:800;color:#2563eb;">
+                    <?= format_rupiah($tagihan_riil) ?>
+                    <?php if ($tagihan_riil < (float)$c['jumlah_cicilan'] && $tagihan_riil > 0): ?>
+                        <br><small style="color:#d97706;font-size:10px;font-weight:700;">(Disesuaikan sisa pelunasan)</small>
+                    <?php elseif ($tagihan_riil <= 0 && $c['status_bayar'] !== 'lunas'): ?>
+                        <br><small style="color:#10b981;font-size:10px;font-weight:700;">(Sudah lunas penuh)</small>
+                    <?php endif; ?>
+                </td>
                 <td style="padding:12px 16px;">
                     <?php if ($c['status_bayar']==='lunas'): ?>
                         <span class="badge" style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">✅ Lunas</span>
@@ -284,6 +319,8 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
                     <?php elseif ($c['status_verifikasi']==='pending' && $c['tanggal_bayar']): ?>
                         <div style="font-size:12px;color:#92400e;font-weight:600;">⏳ Menunggu Admin</div>
                         <div style="font-size:11px;color:#b45309;"><?= format_datetime($c['tanggal_bayar']) ?></div>
+                    <?php elseif ($tagihan_riil <= 0): ?>
+                        <span style="color:#10b981;font-size:12px;font-weight:700;">Sudah Lunas Penuh</span>
                     <?php else: ?>
                         <!-- FORM UPLOAD INLINE -->
                         <details style="<?= $c['status_verifikasi']==='ditolak' ? 'open' : '' ?>">
@@ -296,7 +333,7 @@ if ($kpr_aktif['jml_cicilan'] > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
                                 <input type="hidden" name="id_cicilan_bayar" value="<?= $c['id_cicilan'] ?>">
                                 <input type="hidden" name="id_pengajuan" value="<?= $id_pengajuan ?>">
                                 <div style="font-size:12px;color:#64748b;margin-bottom:8px;">
-                                    Upload bukti transfer <b style="color:#2563eb;"><?= format_rupiah($c['jumlah_cicilan']) ?></b>
+                                    Upload bukti transfer <b style="color:#2563eb;"><?= format_rupiah($tagihan_riil) ?></b>
                                 </div>
                                 <input type="file" name="bukti_cicilan" accept=".jpg,.jpeg,.png,.pdf" required
                                        style="width:100%;padding:8px;border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;font-size:12px;margin-bottom:8px;">

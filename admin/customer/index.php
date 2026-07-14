@@ -96,7 +96,7 @@ $list_customer = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Data Customer - RumahKPR Admin</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
 </head>
 <body>
     <?php sidebar_admin('customer'); ?>

@@ -94,7 +94,7 @@ $cicilan_list = $q_cic->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan KPR Perumahan - Admin</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
     <style>
     @media print {
         .sidebar,.topbar,.breadcrumb,.filter-panel,.print-btn,.no-print { display:none !important; }

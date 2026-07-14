@@ -38,7 +38,7 @@ $kpr_terbaru = $db->query("SELECT pk.*, u.nama_lengkap, p.nama_perumahan, r.blok
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - RumahKPR</title>
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/admin.css?v=3">
 </head>
 <body>
     <?php sidebar_admin('dashboard'); ?>

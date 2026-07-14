@@ -3,6 +3,7 @@
 require_once '../../config/koneksi.php';
 require_once '../../config/cek_admin.php';
 require_once '../../config/functions.php';
+require_once '../../config/midtrans.php';
 require_once '../../includes/sidebar_admin.php';
 
 $action = $_GET['action'] ?? '';
@@ -96,14 +97,46 @@ if ($action === 'update_status' && $id > 0 && $_SERVER['REQUEST_METHOD'] === 'PO
         $track = $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, ?, ?, NOW())");
         $track->execute([$id, $status_baru, $keterangan]);
 
-        // Jika status ditolak, kembalikan status rumah menjadi tersedia & batalkan booking terkonfirmasi terkait
+        // Jika status ditolak, kembalikan status rumah & refund DP via Midtrans jika dibayar via gateway
         if ($status_baru === 'ditolak' && $id_rumah) {
             $db->prepare("UPDATE rumah SET status = 'tersedia' WHERE id_rumah = ?")->execute([$id_rumah]);
             $db->prepare("UPDATE booking SET status_booking = 'dibatalkan' WHERE id_rumah = ? AND status_booking = 'dikonfirmasi'")->execute([$id_rumah]);
+
+            // ── AUTO REFUND: Jika DP dibayar via Midtrans gateway, proses pengembalian dana
+            $dp_gateway = $db->prepare("
+                SELECT id_dp, midtrans_order_id, jumlah_dp, refund_status, payment_method
+                FROM pembayaran_dp
+                WHERE id_pengajuan=? AND status_verifikasi='valid' AND payment_method='gateway'
+                ORDER BY created_at DESC LIMIT 1
+            ");
+            $dp_gateway->execute([$id]);
+            $dp_row = $dp_gateway->fetch();
+
+            if ($dp_row && $dp_row['refund_status'] === 'none' && $dp_row['midtrans_order_id']) {
+                // Panggil Midtrans Refund API
+                $refund_result = midtrans_refund(
+                    $dp_row['midtrans_order_id'],
+                    $dp_row['jumlah_dp'],
+                    'Pengajuan KPR dibatalkan/ditolak oleh admin.'
+                );
+
+                if ($refund_result['success']) {
+                    $db->prepare("UPDATE pembayaran_dp SET refund_status='success', refund_id=? WHERE id_dp=?")
+                       ->execute([$refund_result['refund_key'], $dp_row['id_dp']]);
+                    $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'ditolak', ?, NOW())")
+                       ->execute([$id, '💰 Refund Uang Muka (DP) sebesar ' . number_format($dp_row['jumlah_dp'], 0, ',', '.') . ' berhasil diproses via Midtrans. Dana akan kembali ke rekening customer dalam 1-3 hari kerja.']);
+                } else {
+                    // Refund gagal (mungkin sandbox) — tandai sebagai failed
+                    $db->prepare("UPDATE pembayaran_dp SET refund_status='failed' WHERE id_dp=?")
+                       ->execute([$dp_row['id_dp']]);
+                    $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'ditolak', ?, NOW())")
+                       ->execute([$id, '⚠️ Refund DP via Midtrans gagal diproses otomatis. Admin perlu memproses pengembalian dana secara manual ke customer.']);
+                }
+            }
         }
 
         $db->commit();
-        set_flash('sukses', 'Status pengajuan KPR berhasil diperbarui.');
+        set_flash('sukses', 'Status pengajuan KPR berhasil diperbarui.' . ($status_baru === 'ditolak' ? ' Proses refund DP (jika ada) sudah diajukan ke Midtrans.' : ''));
     } catch (PDOException $e) {
         $db->rollBack();
         set_flash('gagal', 'Terjadi kesalahan sistem: ' . $e->getMessage());
@@ -179,7 +212,7 @@ $list_kpr = $stmt_list->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Pengajuan KPR - RumahKPR Admin</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
     <style>
         .kpr-detail-grid { display: grid; grid-template-columns: 1fr 350px; gap: 24px; align-items: start; }
         .doc-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #475569; font-weight: 600; font-size: 13px; transition: .2s; }

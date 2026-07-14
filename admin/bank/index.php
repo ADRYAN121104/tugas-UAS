@@ -69,7 +69,7 @@ $list_bank = $db->query("SELECT * FROM bank ORDER BY nama_bank ASC")->fetchAll()
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Bank Rekanan - RumahKPR Admin</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
 </head>
 <body>
     <?php sidebar_admin('bank'); ?>
