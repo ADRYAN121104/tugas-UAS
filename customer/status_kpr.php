@@ -381,24 +381,183 @@ require_once '../includes/header.php';
             </div>
         </div>
 
-        <!-- Notifikasi Verifikasi Dokumen - tombol re-upload -->
-        <?php if ($status_skrg === 'verifikasi_dokumen'): ?>
+        <!-- ═══ PANEL KONTEKSTUAL PER STATUS ═══ -->
+        <?php
+        // Helper preview dokumen (image preview or PDF icon)
+        function customer_doc_card($label, $icon, $path, $href) {
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $is_img = in_array($ext, ['jpg','jpeg','png','gif','webp']);
+            echo '<a href="'.$href.'" target="_blank" style="display:block;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;text-decoration:none;transition:.2s;background:#f8fafc;" onmouseover="this.style.borderColor=\'#2563eb\';this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 14px #2563eb22\';" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.transform=\'translateY(0)\';this.style.boxShadow=\'none\';">';
+            echo '<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden;">';
+            if ($is_img) {
+                echo '<img src="'.$href.'" alt="'.$label.'" loading="lazy" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                echo '<span style="font-size:36px;">'.$icon.'</span>';
+            }
+            echo '</div>';
+            echo '<div style="padding:7px 8px;font-size:11.5px;font-weight:700;color:#475569;text-align:center;">'.$label.'</div>';
+            echo '</a>';
+        }
+        ?>
+        <style>
+        .ctx-status-card { background:#fff; border-radius:14px; border:1px solid #e2e8f0; padding:22px 24px; margin-bottom:22px; box-shadow:0 4px 20px rgba(0,0,0,.05); }
+        .ctx-guide-box { border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+        .ctx-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
+        .ctx-info-badge { display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700; }
+        </style>
+
+        <?php if ($status_skrg === 'pengajuan_masuk'): ?>
+        <!-- STATUS: PENGAJUAN MASUK -->
+        <div class="ctx-status-card" style="border-left:4px solid #3b82f6;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📥</div>
+                <div>
+                    <div style="font-weight:800;font-size:15px;color:#1e3a8a;">Pengajuan Berhasil Dikirim</div>
+                    <div style="font-size:12px;color:#64748b;">Admin sedang memeriksa data awal pengajuan Anda</div>
+                </div>
+            </div>
+            <div class="ctx-guide-box" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;">
+                <div style="font-weight:700;color:#1e40af;font-size:13px;margin-bottom:8px;">📌 Yang Terjadi Sekarang</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;color:#1d4ed8;line-height:2;">
+                    <li>Admin memeriksa data diri, properti, dan bank yang Anda pilih</li>
+                    <li>Pastikan nomor HP Anda aktif — admin mungkin menghubungi Anda</li>
+                    <li>Jika belum upload berkas, siapkan <b>KTP, KK, Slip Gaji</b></li>
+                    <li>Perkiraan waktu review: <b>1-2 hari kerja</b></li>
+                </ul>
+            </div>
+            <?php if ($dokumen_kpr): ?>
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">📂 Berkas yang sudah Anda upload:</div>
+            <div class="ctx-doc-grid">
+                <?php if ($dokumen_kpr['ktp']) customer_doc_card('KTP','🪪',$dokumen_kpr['ktp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['ktp'])); ?>
+                <?php if ($dokumen_kpr['kk']) customer_doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen_kpr['kk'],'../uploads/kk/'.htmlspecialchars($dokumen_kpr['kk'])); ?>
+                <?php if ($dokumen_kpr['slip_gaji']) customer_doc_card('Slip Gaji','💵',$dokumen_kpr['slip_gaji'],'../uploads/slip_gaji/'.htmlspecialchars($dokumen_kpr['slip_gaji'])); ?>
+                <?php if ($dokumen_kpr['npwp']) customer_doc_card('NPWP','📄',$dokumen_kpr['npwp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['npwp'])); ?>
+            </div>
+            <?php else: ?>
+            <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:13px;color:#92400e;">
+                ⚠️ <b>Belum ada berkas yang diupload.</b> Jika admin meminta, siapkan dokumen persyaratan KPR Anda.
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <?php elseif ($status_skrg === 'verifikasi_dokumen'): ?>
+        <!-- STATUS: VERIFIKASI DOKUMEN -->
+        <div class="ctx-status-card" style="border-left:4px solid #f59e0b;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#d97706,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📋</div>
+                <div>
+                    <div style="font-weight:800;font-size:15px;color:#92400e;">Berkas Sedang Diverifikasi</div>
+                    <div style="font-size:12px;color:#64748b;">Admin memeriksa keaslian dan kelengkapan dokumen Anda</div>
+                </div>
+            </div>
+            <div class="ctx-guide-box" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;">
+                <div style="font-weight:700;color:#92400e;font-size:13px;margin-bottom:8px;">📌 Berkas yang Diperiksa Admin</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:2;">
+                    <li><b>KTP</b>: Foto harus jelas, tidak blur, masa berlaku valid</li>
+                    <li><b>Kartu Keluarga</b>: Nama Anda harus tertera di KK</li>
+                    <li><b>Slip Gaji</b>: Nominal harus sesuai dengan data yang diinput</li>
+                    <li><b>NPWP</b> (jika ada): Dicocokan dengan data pajak</li>
+                </ul>
+                <div style="margin-top:10px;font-size:12px;color:#92400e;font-weight:700;">⏳ Proses verifikasi: 1–3 hari kerja</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">📂 Berkas yang Anda upload untuk diverifikasi:</div>
+            <?php if (!$dokumen_kpr): ?>
+            <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;font-size:13px;color:#991b1b;">
+                ❌ <b>Belum ada dokumen.</b> Hubungi admin untuk bantuan upload berkas.
+            </div>
+            <?php else: ?>
+            <div class="ctx-doc-grid">
+                <?php if ($dokumen_kpr['ktp']) customer_doc_card('KTP','🪪',$dokumen_kpr['ktp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['ktp'])); ?>
+                <?php if ($dokumen_kpr['kk']) customer_doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen_kpr['kk'],'../uploads/kk/'.htmlspecialchars($dokumen_kpr['kk'])); ?>
+                <?php if ($dokumen_kpr['slip_gaji']) customer_doc_card('Slip Gaji','💵',$dokumen_kpr['slip_gaji'],'../uploads/slip_gaji/'.htmlspecialchars($dokumen_kpr['slip_gaji'])); ?>
+                <?php if ($dokumen_kpr['npwp']) customer_doc_card('NPWP','📄',$dokumen_kpr['npwp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['npwp'])); ?>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:#64748b;">Klik gambar untuk membuka dokumen. Jika ada yang perlu diperbaiki, gunakan tombol upload ulang di bawah.</div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Notifikasi re-upload (jika ada catatan admin) -->
+        <?php if ($catatan_verifikasi): ?>
         <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7); border:2px solid #f59e0b; border-radius:14px; padding:20px 24px; margin-bottom:24px; display:flex; align-items:flex-start; gap:16px; box-shadow:0 4px 20px rgba(245,158,11,0.15);">
             <div style="font-size:32px; flex-shrink:0;">⚠️</div>
             <div style="flex:1;">
                 <div style="font-size:15px; font-weight:800; color:#92400e; margin-bottom:6px;">Dokumen Perlu Diperbaiki</div>
-                <?php if ($catatan_verifikasi): ?>
                 <div style="font-size:13.5px; color:#78350f; margin-bottom:14px; line-height:1.6; background:#fff; border-radius:8px; padding:10px 14px; border-left:3px solid #f59e0b;">
                     📋 <b>Catatan Admin:</b> <?= htmlspecialchars($catatan_verifikasi) ?>
                 </div>
-                <?php endif; ?>
-                <div style="font-size:13px; color:#92400e; margin-bottom:14px;">Silakan upload ulang dokumen yang bermasalah. Anda tetap berada di halaman ini, tidak perlu berpindah halaman.</div>
+                <div style="font-size:13px; color:#92400e; margin-bottom:14px;">Silakan upload ulang dokumen yang bermasalah.</div>
                 <button id="btnOpenReupload" onclick="openReuploadModal()" class="btn btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none; color:#fff; font-weight:800; padding:10px 20px; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
                     📤 Upload Ulang Dokumen
                 </button>
             </div>
         </div>
+        <?php else: ?>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:24px;">⏳</span>
+            <div>
+                <div style="font-weight:700;color:#15803d;font-size:13px;">Menunggu Verifikasi Admin</div>
+                <div style="font-size:12px;color:#16a34a;">Belum ada catatan revisi. Dokumen Anda sedang dalam proses pemeriksaan.</div>
+            </div>
+        </div>
         <?php endif; ?>
+
+        <?php elseif ($status_skrg === 'survey'): ?>
+        <!-- STATUS: SURVEY -->
+        <div class="ctx-status-card" style="border-left:4px solid #8b5cf6;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6d28d9,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔍</div>
+                <div>
+                    <div style="font-weight:800;font-size:15px;color:#5b21b6;">Tahap Survey & BI Checking</div>
+                    <div style="font-size:12px;color:#64748b;">Dokumen Anda lolos verifikasi. Tim sedang melakukan survey</div>
+                </div>
+            </div>
+            <div class="ctx-guide-box" style="background:linear-gradient(135deg,#faf5ff,#ede9fe);border:1px solid #c4b5fd;">
+                <div style="font-weight:700;color:#6d28d9;font-size:13px;margin-bottom:8px;">📌 Proses yang Sedang Berjalan</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;color:#5b21b6;line-height:2;">
+                    <li><b>Survey Fisik</b>: Tim lapangan akan mengunjungi properti yang Anda pilih</li>
+                    <li><b>BI/SLIK Checking</b>: Bank memeriksa riwayat kredit Anda (pastikan tidak ada kredit macet)</li>
+                    <li><b>Yang perlu Anda lakukan</b>: Tunggu dan pastikan HP aktif</li>
+                    <li><b>Perkiraan durasi</b>: 3–7 hari kerja</li>
+                </ul>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;">📂 Dokumen yang sudah diserahkan:</div>
+            <?php if ($dokumen_kpr): ?>
+            <div class="ctx-doc-grid">
+                <?php if ($dokumen_kpr['ktp']) customer_doc_card('KTP','🪪',$dokumen_kpr['ktp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['ktp'])); ?>
+                <?php if ($dokumen_kpr['kk']) customer_doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen_kpr['kk'],'../uploads/kk/'.htmlspecialchars($dokumen_kpr['kk'])); ?>
+                <?php if ($dokumen_kpr['slip_gaji']) customer_doc_card('Slip Gaji','💵',$dokumen_kpr['slip_gaji'],'../uploads/slip_gaji/'.htmlspecialchars($dokumen_kpr['slip_gaji'])); ?>
+                <?php if ($dokumen_kpr['npwp']) customer_doc_card('NPWP','📄',$dokumen_kpr['npwp'],'../uploads/ktp/'.htmlspecialchars($dokumen_kpr['npwp'])); ?>
+            </div>
+            <?php else: ?>
+            <div style="background:#f1f5f9;border-radius:8px;padding:10px 14px;font-size:13px;color:#64748b;">Belum ada dokumen yang tercatat.</div>
+            <?php endif; ?>
+        </div>
+
+        <?php elseif ($status_skrg === 'ditolak'): ?>
+        <!-- STATUS: DITOLAK -->
+        <div class="ctx-status-card" style="border-left:4px solid #ef4444;background:linear-gradient(135deg,#fff5f5,#fee2e2);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="font-size:36px;">❌</div>
+                <div>
+                    <div style="font-weight:800;font-size:15px;color:#991b1b;">Pengajuan KPR Ditolak</div>
+                    <div style="font-size:12px;color:#b91c1c;"><?= htmlspecialchars($kpr_aktif['catatan_admin'] ?? 'Silakan hubungi tim kami untuk informasi lebih lanjut.') ?></div>
+                </div>
+            </div>
+            <div class="ctx-guide-box" style="background:#fff;border:1px solid #fca5a5;">
+                <div style="font-weight:700;color:#dc2626;font-size:13px;margin-bottom:8px;">💡 Apa yang Bisa Dilakukan?</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;color:#7f1d1d;line-height:2;">
+                    <li>Hubungi admin untuk mendapatkan penjelasan detail alasan penolakan</li>
+                    <li>Coba perbaiki riwayat kredit (BI Checking) jika bermasalah</li>
+                    <li>Pilih unit rumah lain dengan harga yang sesuai kemampuan finansial</li>
+                    <li>Pertimbangkan pengajuan ke bank rekanan lain</li>
+                </ul>
+            </div>
+            <a href="../guest/kontak.php" class="btn btn-primary" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;font-weight:700;padding:10px 20px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+                📞 Hubungi Admin
+            </a>
+        </div>
+        <?php endif; ?>
+        <!-- ═══ END PANEL KONTEKSTUAL ═══ -->
 
         <!-- ═══ NOTIFIKASI: Status DISETUJUI BANK → Form Bayar DP Embedded ═══ -->
         <?php if ($status_skrg === 'disetujui'): ?>
@@ -495,17 +654,9 @@ require_once '../includes/header.php';
         </div>
 
         <!-- FORM BAYAR DP (selalu tampil setelah disetujui bank) -->
-        <div style="background:#fff;border-radius:14px;border:2px solid <?= $dp_done ? '#10b981' : '#fbbf24' ?>;padding:20px 24px;margin-bottom:20px;box-shadow:0 4px 16px rgba(0,0,0,.04);">
-            <div style="font-size:14px;font-weight:800;margin-bottom:4px;">💰 Pembayaran Uang Muka (DP)</div>
-            <p style="font-size:12px;color:#64748b;margin-bottom:16px;">Transfer DP sebesar <b style="color:#d97706;"><?= format_rupiah($kpr_aktif['uang_muka'] ?? 0) ?></b> lalu upload bukti transfer di bawah ini.</p>
-
-            <!-- Info rekening -->
-            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.9;">
-                🏦 <b>Transfer ke:</b><br>
-                Bank: <b>BCA</b> &bull; No. Rekening: <b>1234-5678-90</b><br>
-                Atas Nama: <b>PT RumahKPR Indonesia</b><br>
-                Nominal DP: <b style="color:#d97706;font-size:15px;"><?= format_rupiah($kpr_aktif['uang_muka'] ?? 0) ?></b>
-            </div>
+        <div style="background:#fff;border-radius:14px;border:2px solid <?= $dp_done ? '#10b981' : '#fbbf24' ?>;padding:22px 24px;margin-bottom:20px;box-shadow:0 4px 16px rgba(0,0,0,.04);">
+            <div style="font-size:14px;font-weight:800;margin-bottom:4px;color:#1e293b;">💰 Pembayaran Uang Muka (DP)</div>
+            <p style="font-size:12.5px;color:#64748b;margin-bottom:16px;">Selesaikan pembayaran DP sebesar <b style="color:#d97706;font-size:14px;"><?= format_rupiah($kpr_aktif['uang_muka'] ?? 0) ?></b> untuk memproses status Akad Kredit Anda.</p>
 
             <?php if ($dp_done): ?>
                 <!-- DP sudah valid -->
@@ -516,59 +667,31 @@ require_once '../includes/header.php';
                 </div>
             <?php elseif ($dp_status_data && $dp_status_data['status_verifikasi']==='pending'): ?>
                 <!-- DP pending -->
-                <div style="background:#fef3c7;border:2px solid #fbbf24;border-radius:12px;padding:16px;margin-bottom:14px;">
-                    <div style="font-weight:800;color:#92400e;margin-bottom:4px;">⏳ Bukti DP Sedang Diverifikasi Admin</div>
-                    <div style="font-size:12px;color:#b45309;">Dikirim: <?= format_datetime($dp_status_data['tanggal_bayar']) ?></div>
-                    <?php if ($dp_status_data['bukti_dp']): ?>
-                        <a href="../uploads/bukti_dp/<?= htmlspecialchars($dp_status_data['bukti_dp']) ?>" target="_blank"
-                           style="font-size:12px;color:#2563eb;font-weight:700;display:inline-flex;align-items:center;gap:4px;margin-top:8px;">📎 Lihat bukti yang dikirim</a>
-                    <?php endif; ?>
+                <div style="background:#fef3c7;border:2px solid #fbbf24;border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:30px;margin-bottom:6px;">⏳</div>
+                    <div style="font-weight:800;color:#92400e;font-size:14px;">Bukti DP Sedang Diverifikasi Admin</div>
+                    <div style="font-size:12px;color:#b45309;margin-top:4px;">Dikirim: <?= format_datetime($dp_status_data['tanggal_bayar']) ?></div>
+                    <div style="margin-top:12px;">
+                        <a href="bayar_dp.php?id=<?= $id_pengajuan ?>" class="btn btn-outline btn-sm" style="border-color:#fbbf24;color:#92400e;font-weight:700;">🔄 Selesaikan / Upload Ulang DP</a>
+                    </div>
                 </div>
-                <!-- Opsi upload ulang -->
-                <details style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
-                    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#64748b;">📤 Upload ulang jika ada revisi</summary>
-                    <form method="POST" enctype="multipart/form-data" style="margin-top:12px;">
-                        <input type="hidden" name="upload_dp" value="1">
-                        <input type="hidden" name="id_pengajuan" value="<?= $id_pengajuan ?>">
-                        <input type="file" name="bukti_dp" accept=".jpg,.jpeg,.png,.pdf" required
-                               style="width:100%;padding:10px;border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;margin-bottom:10px;">
-                        <button type="submit" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;width:100%;">
-                            📤 Kirim Ulang Bukti DP
-                        </button>
-                    </form>
-                </details>
             <?php elseif ($dp_status_data && $dp_status_data['status_verifikasi']==='ditolak'): ?>
                 <!-- DP ditolak -->
-                <div style="background:#fee2e2;border:2px solid #ef4444;border-radius:12px;padding:14px;margin-bottom:16px;">
+                <div style="background:#fee2e2;border:2px solid #ef4444;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;">
                     <div style="font-weight:800;color:#991b1b;margin-bottom:4px;">❌ Bukti DP Ditolak Admin</div>
-                    <div style="font-size:12px;color:#b91c1c;">Silakan upload ulang bukti transfer yang valid.</div>
+                    <div style="font-size:12.5px;color:#b91c1c;margin-bottom:12px;">Alasan: <?= htmlspecialchars($dp_status_data['catatan'] ?? 'Bukti transfer tidak valid.') ?></div>
+                    <a href="bayar_dp.php?id=<?= $id_pengajuan ?>" class="btn btn-danger" style="display:inline-flex;width:100%;justify-content:center;font-weight:800;">💰 Kirim Ulang Pembayaran DP</a>
                 </div>
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="upload_dp" value="1">
-                    <input type="hidden" name="id_pengajuan" value="<?= $id_pengajuan ?>">
-                    <input type="file" name="bukti_dp" accept=".jpg,.jpeg,.png,.pdf" required
-                           style="width:100%;padding:12px;border:2px dashed #fca5a5;border-radius:10px;background:#fff5f5;margin-bottom:12px;">
-                    <button type="submit" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:800;cursor:pointer;width:100%;font-size:14px;">
-                        💰 Kirim Ulang Bukti DP
-                    </button>
-                </form>
             <?php else: ?>
                 <!-- Belum bayar DP -->
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="upload_dp" value="1">
-                    <input type="hidden" name="id_pengajuan" value="<?= $id_pengajuan ?>">
-                    <label style="display:block;border:2px dashed #93c5fd;border-radius:12px;background:#eff6ff;padding:20px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px;" id="dpUploadZone">
-                        <div style="font-size:28px;margin-bottom:6px;">📎</div>
-                        <div style="font-weight:700;color:#1e40af;margin-bottom:3px;">Klik untuk pilih file bukti transfer</div>
-                        <div style="font-size:12px;color:#64748b;">Format JPG/PNG/PDF · Maks 5MB</div>
-                        <div id="dpFileName" style="display:none;margin-top:8px;font-size:12px;font-weight:700;color:#10b981;"></div>
-                        <input type="file" name="bukti_dp" id="dpFileInput" accept=".jpg,.jpeg,.png,.pdf" required style="display:none;"
-                               onchange="const f=this.files[0]; if(f){document.getElementById('dpFileName').style.display='block'; document.getElementById('dpFileName').textContent='✓ '+f.name; document.getElementById('dpUploadZone').style.borderColor='#10b981'; document.getElementById('dpUploadZone').style.background='#ecfdf5';}">
-                    </label>
-                    <button type="submit" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:14px 20px;border-radius:12px;font-weight:900;cursor:pointer;width:100%;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
-                        💰 Kirim Bukti Pembayaran DP
-                    </button>
-                </form>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:13px;color:#1e40af;line-height:1.6;margin-bottom:14px;">
+                        Anda dapat membayar DP secara instan otomatis via <b>Payment Gateway (Midtrans)</b> atau melalui <b>Transfer Manual (BCA)</b>.
+                    </div>
+                    <a href="bayar_dp.php?id=<?= $id_pengajuan ?>" class="btn btn-primary" style="display:inline-flex;width:100%;justify-content:center;font-weight:800;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;box-shadow:0 4px 14px rgba(37,99,235,0.3);">
+                        💳 Bayar Uang Muka (DP) Sekarang
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
         <?php endif; ?>

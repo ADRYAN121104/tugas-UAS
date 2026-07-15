@@ -157,44 +157,42 @@ $total_grand        = $booking_fee + $total_dp_paid + $total_cicilan_paid;
 $harga_rumah        = (float)$kpr_aktif['harga'];
 $sisa_harga_rumah   = max(0, $harga_rumah - $total_grand);
 
-// Menghitung sisa kali cicilan tergantung sisa harga properti
-$sisa_kali_cicilan = 0;
-if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
-    $sisa_kali_cicilan = ceil($sisa_harga_rumah / $kpr_aktif['cicilan_per_bulan']);
-    // Batasi agar tidak melebihi sisa tenor bulan aslinya
-    $sisa_kali_cicilan = min($kpr_aktif['jml_cicilan'] - $kpr_aktif['jml_lunas'], $sisa_kali_cicilan);
+$total_belum = 0;
+foreach ($cicilan_list as $c) {
+    if ($c['status_bayar'] !== 'lunas') {
+        $total_belum += $c['jumlah_cicilan'];
+    }
 }
+
+$persen_harga = $harga_rumah > 0 ? round(($total_grand / $harga_rumah) * 100) : 0;
+$persen_lunas = count($cicilan_list) > 0 ? round(count(array_filter($cicilan_list, fn($c) => $c['status_bayar']==='lunas')) / count($cicilan_list) * 100) : 0;
 ?>
-<div class="rekap-total">
-    <div style="font-size:12px;opacity:.6;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Rekap Total Pembayaran Properti Anda</div>
-    
-    <div class="rekap-row">
-        <span class="rekap-lbl">🏙️ Harga Rumah Properti</span>
-        <span class="rekap-val" style="color:#ffffff; font-size:15px;"><?= format_rupiah($harga_rumah) ?></span>
+<!-- REKAP KEUANGAN GRID BOXES (Persis Tampilan Admin) -->
+<div class="cic-card" style="padding: 18px 20px; background: linear-gradient(135deg, #f0fdf4, #eff6ff); display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 24px;">
+    <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-size:10px; color:#64748b; margin-bottom:4px; text-transform:uppercase; font-weight:700;">Harga Properti Rumah</div>
+        <div style="font-size:14px; font-weight:800; color:#2563eb;"><?= format_rupiah($harga_rumah) ?></div>
     </div>
-    <div class="rekap-row">
-        <span class="rekap-lbl">📋 Booking Fee Terbayar</span>
-        <span class="rekap-val" style="color:#a7f3d0;"><?= format_rupiah($booking_fee) ?></span>
+    <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-size:10px; color:#64748b; margin-bottom:4px; text-transform:uppercase; font-weight:700;">Booking Fee</div>
+        <div style="font-size:14px; font-weight:800; color:#0284c7;"><?= format_rupiah($booking_fee) ?></div>
     </div>
-    <div class="rekap-row">
-        <span class="rekap-lbl">💰 Uang Muka (DP) Terbayar</span>
-        <span class="rekap-val" style="color:#fbbf24;"><?= format_rupiah($total_dp_paid) ?></span>
+    <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-size:10px; color:#64748b; margin-bottom:4px; text-transform:uppercase; font-weight:700;">DP (Uang Muka)</div>
+        <div style="font-size:14px; font-weight:800; color:#d97706;"><?= format_rupiah($total_dp_paid) ?> <?= $dp_customer ? badge_pembayaran($dp_customer['status_verifikasi']) : '<span style="color:#ef4444;font-weight:700;">Belum</span>' ?></div>
     </div>
-    <div class="rekap-row">
-        <span class="rekap-lbl">💳 Total Cicilan Terbayar (<?= $kpr_aktif['jml_lunas'] ?> bulan)</span>
-        <span class="rekap-val" style="color:#6ee7b7;"><?= format_rupiah($total_cicilan_paid) ?></span>
+    <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-size:10px; color:#64748b; margin-bottom:4px; text-transform:uppercase; font-weight:700;">Cicilan Terbayar</div>
+        <div style="font-size:14px; font-weight:800; color:#10b981;"><?= format_rupiah($total_cicilan_paid) ?></div>
     </div>
-    <div class="rekap-row" style="border-top:1px solid rgba(255,255,255,0.25); padding-top:10px;">
-        <span class="rekap-lbl" style="font-weight:bold;">💵 TOTAL SUDAH DIBAYAR (BF + DP + CICILAN)</span>
-        <span class="rekap-grand" style="color:#fbbf24; font-size:16px; font-weight:900;"><?= format_rupiah($total_grand) ?></span>
+    <div style="background:#fff; padding:12px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-size:10px; color:#64748b; margin-bottom:4px; text-transform:uppercase; font-weight:700;">Total Pembayaran Masuk</div>
+        <div style="font-size:14px; font-weight:800; color:#1e3a8a;"><?= format_rupiah($total_grand) ?> (<?= $persen_harga ?>%)</div>
     </div>
-    <div class="rekap-row" style="background: rgba(239, 68, 68, 0.15); padding: 8px 10px; border-radius: 6px; margin-top: 8px;">
-        <span class="rekap-lbl" style="color:#f87171; font-weight:bold;">🚨 Sisa Harga Properti Belum Lunas</span>
-        <span class="rekap-val" style="color:#f87171; font-weight:900; font-size:15px;"><?= format_rupiah($sisa_harga_rumah) ?></span>
-    </div>
-    <div class="rekap-row" style="background: rgba(59, 130, 246, 0.15); padding: 8px 10px; border-radius: 6px; margin-top: 6px;">
-        <span class="rekap-lbl" style="color:#60a5fa; font-weight:bold;">📅 Sisa Kali Cicilan Untuk Lunas</span>
-        <span class="rekap-val" style="color:#60a5fa; font-weight:900; font-size:15px;"><?= $sisa_kali_cicilan ?> Kali Cicilan Lagi</span>
+    <div style="background:#fff5f5; padding:12px; border-radius:10px; border:1px solid #fee2e2; text-align:center; grid-column: span 2; box-shadow: 0 2px 8px rgba(239,68,68,0.05);">
+        <div style="font-size:10px; color:#991b1b; margin-bottom:4px; text-transform:uppercase; font-weight:bold;">Sisa Target Pelunasan Rumah</div>
+        <div style="font-size:16px; font-weight:900; color:#ef4444;"><?= format_rupiah($sisa_harga_rumah) ?></div>
+        <div style="font-size:10.5px; color:#64748b; margin-top:2px;">(Sisa Tagihan Cicilan Berjalan: <?= format_rupiah($total_belum) ?>)</div>
     </div>
 </div>
 
@@ -246,7 +244,7 @@ if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
 <div class="cic-card" style="padding:0;">
     <div style="padding:16px 22px;border-bottom:1px solid #e2e8f0;background:linear-gradient(135deg,#f8faff,#fff);">
         <h3 style="font-size:15px;font-weight:800;margin:0;">📅 Jadwal Cicilan Bulanan</h3>
-        <p style="font-size:12px;color:#64748b;margin:4px 0 0;">Klik tombol <b>Bayar</b> untuk upload bukti transfer</p>
+        <p style="font-size:12px;color:#64748b;margin:4px 0 0;">Daftar tagihan, bunga, pokok dan status pembayaran Anda</p>
     </div>
 
     <!-- INFO REKENING BAYAR -->
@@ -264,9 +262,12 @@ if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
             <tr style="background:linear-gradient(135deg,#f8faff,#f0f4ff);">
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Bulan</th>
                 <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Jatuh Tempo</th>
-                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Tagihan Riil</th>
-                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Status</th>
-                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Upload Bukti Bayar</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Pokok</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Bunga</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Total Tagihan</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Status Bayar</th>
+                <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;">Tanggal Bayar</th>
+                <th style="padding:12px 16px;text-align:center;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;width:200px;">Aksi</th>
             </tr>
         </thead>
         <tbody>
@@ -292,6 +293,8 @@ if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
                     <?= $is_late ? ' <span style="font-size:10px;color:#ef4444;font-weight:700;">⚠️ Terlambat</span>' : '' ?>
                 </td>
                 <td style="padding:12px 16px;color:#64748b;font-size:12px;"><?= format_tanggal($c['tanggal_jatuh_tempo']) ?></td>
+                <td style="padding:12px 16px;color:#475569;"><?= format_rupiah($c['pokok']) ?></td>
+                <td style="padding:12px 16px;color:#ef4444;"><?= format_rupiah($c['bunga']) ?></td>
                 <td style="padding:12px 16px;font-weight:800;color:#2563eb;">
                     <?= format_rupiah($tagihan_riil) ?>
                     <?php if ($tagihan_riil < (float)$c['jumlah_cicilan'] && $tagihan_riil > 0): ?>
@@ -302,34 +305,39 @@ if ($sisa_harga_rumah > 0 && $kpr_aktif['cicilan_per_bulan'] > 0) {
                 </td>
                 <td style="padding:12px 16px;">
                     <?php if ($c['status_bayar']==='lunas'): ?>
-                        <span class="badge" style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">✅ Lunas</span>
+                        <span style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">✅ Lunas</span>
                     <?php elseif ($c['status_verifikasi']==='pending' && $c['tanggal_bayar']): ?>
-                        <span class="badge" style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">⏳ Diverifikasi</span>
+                        <span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">⏳ Diverifikasi</span>
                     <?php elseif ($c['status_verifikasi']==='ditolak'): ?>
-                        <span class="badge" style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">❌ Ditolak</span>
+                        <span style="background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">❌ Ditolak</span>
                     <?php elseif ($is_late): ?>
-                        <span class="badge" style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">⏰ Terlambat</span>
+                        <span style="background:#fee2e2;color:#ef4444;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">⏰ Terlambat</span>
                     <?php else: ?>
-                        <span class="badge" style="background:#f1f5f9;color:#64748b;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">⏳ Belum</span>
+                        <span style="background:#f1f5f9;color:#64748b;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">⏳ Belum</span>
                     <?php endif; ?>
                 </td>
-                <td style="padding:10px 16px;">
+                <td style="padding:12px 16px;color:#475569;font-size:12px;">
+                    <?= $c['tanggal_bayar'] ? format_tanggal(date('Y-m-d', strtotime($c['tanggal_bayar']))) : '-' ?>
+                </td>
+                <td style="padding:10px 16px;text-align:center;">
                     <?php if ($c['status_bayar']==='lunas'): ?>
-                        <span style="color:#10b981;font-size:12px;font-weight:700;">✅ Terbayar</span>
+                        <span style="color:#10b981;font-size:12.5px;font-weight:700;">✅ Terbayar</span>
                     <?php elseif ($c['status_verifikasi']==='pending' && $c['tanggal_bayar']): ?>
-                        <div style="font-size:12px;color:#92400e;font-weight:600;">⏳ Menunggu Admin</div>
-                        <div style="font-size:11px;color:#b45309;"><?= format_datetime($c['tanggal_bayar']) ?></div>
+                        <div style="font-size:12px;color:#92400e;font-weight:600;">⏳ Menunggu Verifikasi</div>
+                        <?php if ($c['bukti_bayar']): ?>
+                            <a href="../uploads/bukti_cicilan/<?= htmlspecialchars($c['bukti_bayar']) ?>" target="_blank" style="font-size:11px;color:#2563eb;text-decoration:underline;">📎 Lihat Bukti</a>
+                        <?php endif; ?>
                     <?php elseif ($tagihan_riil <= 0): ?>
                         <span style="color:#10b981;font-size:12px;font-weight:700;">Sudah Lunas Penuh</span>
                     <?php else: ?>
                         <!-- FORM UPLOAD INLINE -->
                         <details style="<?= $c['status_verifikasi']==='ditolak' ? 'open' : '' ?>">
-                            <summary style="cursor:pointer;font-size:12px;font-weight:700;color:<?= $is_late ? '#ef4444' : '#2563eb' ?>;list-style:none;display:flex;align-items:center;gap:6px;">
+                            <summary style="cursor:pointer;font-size:12px;font-weight:700;color:<?= $is_late ? '#ef4444' : '#2563eb' ?>;list-style:none;display:flex;align-items:center;justify-content:center;gap:6px;">
                                 <span style="background:<?= $is_late ? '#fee2e2' : '#eff6ff' ?>;color:<?= $is_late ? '#ef4444' : '#2563eb' ?>;border:1px solid <?= $is_late ? '#fca5a5' : '#bfdbfe' ?>;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
                                     💰 <?= $c['status_verifikasi']==='ditolak' ? 'Upload Ulang' : 'Bayar Sekarang' ?>
                                 </span>
                             </summary>
-                            <form method="POST" enctype="multipart/form-data" style="margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                            <form method="POST" enctype="multipart/form-data" style="margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:left;">
                                 <input type="hidden" name="id_cicilan_bayar" value="<?= $c['id_cicilan'] ?>">
                                 <input type="hidden" name="id_pengajuan" value="<?= $id_pengajuan ?>">
                                 <div style="font-size:12px;color:#64748b;margin-bottom:8px;">

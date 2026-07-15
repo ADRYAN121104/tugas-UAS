@@ -8,6 +8,17 @@ require_once '../config/midtrans.php';
 $id_user      = id_user();
 $id_pengajuan = (int)($_GET['id'] ?? 0);
 
+if ($id_pengajuan === 0) {
+    // Cari KPR aktif/disetujui otomatis
+    $stmt_find = $db->prepare("SELECT id_pengajuan FROM pengajuan_kpr WHERE id_user=? AND status_pengajuan IN ('disetujui','akad_kredit') ORDER BY id_pengajuan DESC LIMIT 1");
+    $stmt_find->execute([$id_user]);
+    $id_pengajuan = (int)$stmt_find->fetchColumn();
+    if ($id_pengajuan > 0) {
+        header("Location: bayar_dp.php?id=$id_pengajuan");
+        exit;
+    }
+}
+
 // Ambil data pengajuan + pastikan milik user & status disetujui/akad_kredit
 $stmt = $db->prepare("
     SELECT pk.*, p.nama_perumahan, r.blok, r.kode_unit, r.harga, r.nama_tipe,
@@ -23,7 +34,7 @@ $stmt->execute([$id_pengajuan, $id_user]);
 $pengajuan = $stmt->fetch();
 
 if (!$pengajuan) {
-    set_flash('gagal', 'Pengajuan tidak ditemukan atau belum disetujui.');
+    set_flash('gagal', 'Anda belum memiliki pengajuan KPR yang disetujui untuk dibayar DP-nya.');
     header('Location: status_kpr.php');
     exit;
 }

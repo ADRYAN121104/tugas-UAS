@@ -54,9 +54,55 @@ if ($action === 'verif_dp' && $id > 0) {
                 $db->prepare("UPDATE pengajuan_kpr SET status_pengajuan='akad_kredit' WHERE id_pengajuan=?")->execute([$id]);
                 if ($id_rumah) $db->prepare("UPDATE rumah SET status='terjual' WHERE id_rumah=?")->execute([$id_rumah]);
                 $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'akad_kredit', ?, NOW())")
-                   ->execute([$id, '🤝 Pembayaran DP telah diverifikasi. Status berubah ke Akad Kredit. Jadwal cicilan akan segera dibuat.']);
+                   ->execute([$id, '🤝 Pembayaran DP telah diverifikasi. Status berubah ke Akad Kredit. Jadwal cicilan otomatis dibuat.']);
+
+                // ── AUTO-GENERATE JADWAL CICILAN ──────────────────────────────
+                $cek_cic2 = $db->prepare("SELECT COUNT(*) FROM cicilan_kpr WHERE id_pengajuan=?");
+                $cek_cic2->execute([$id]);
+                if ($cek_cic2->fetchColumn() == 0) {
+                    $kpr_gen2 = $db->prepare("
+                        SELECT pk.uang_muka, pk.tenor, b.bunga_kpr, r.harga
+                        FROM pengajuan_kpr pk
+                        JOIN bank b ON pk.id_bank = b.id_bank
+                        JOIN rumah r ON pk.id_rumah = r.id_rumah
+                        WHERE pk.id_pengajuan = ?
+                    ");
+                    $kpr_gen2->execute([$id]);
+                    $kpr_g2 = $kpr_gen2->fetch();
+                    if ($kpr_g2) {
+                        $harga_g2        = (float)$kpr_g2['harga'];
+                        $dp_g2           = (float)$dp['jumlah_dp'];
+                        $pokok_pinjaman2 = max(0, $harga_g2 - $dp_g2);
+                        $bunga_pa2       = (float)$kpr_g2['bunga_kpr'] / 100;
+                        $tenor_bulan2    = (int)$kpr_g2['tenor'] * 12;
+                        $bunga_pb2       = $bunga_pa2 / 12;
+
+                        if ($pokok_pinjaman2 > 0 && $tenor_bulan2 > 0) {
+                            $cicilan_bulanan2 = ($bunga_pb2 > 0)
+                                ? $pokok_pinjaman2 * ($bunga_pb2 * pow(1 + $bunga_pb2, $tenor_bulan2)) / (pow(1 + $bunga_pb2, $tenor_bulan2) - 1)
+                                : $pokok_pinjaman2 / $tenor_bulan2;
+
+                            $saldo_pokok2 = $pokok_pinjaman2;
+                            $tgl_mulai2   = new DateTime();
+                            $tgl_mulai2->modify('+1 month');
+
+                            for ($bulan2 = 1; $bulan2 <= $tenor_bulan2; $bulan2++) {
+                                $bunga_bln2    = $saldo_pokok2 * $bunga_pb2;
+                                $cicilan_pokok2= $cicilan_bulanan2 - $bunga_bln2;
+                                $saldo_pokok2 -= $cicilan_pokok2;
+                                if ($saldo_pokok2 < 0) $saldo_pokok2 = 0;
+                                $tgl_jatuh2 = clone $tgl_mulai2;
+                                $tgl_jatuh2->modify('+' . ($bulan2 - 1) . ' month');
+                                $db->prepare("INSERT INTO cicilan_kpr (id_pengajuan, bulan_ke, tanggal_jatuh_tempo, jumlah_cicilan, pokok, bunga, status_bayar) VALUES (?, ?, ?, ?, ?, ?, 'belum')")
+                                   ->execute([$id, $bulan2, $tgl_jatuh2->format('Y-m-d'), round($cicilan_bulanan2,2), round($cicilan_pokok2,2), round($bunga_bln2,2)]);
+                            }
+                        }
+                    }
+                }
+                // ── END AUTO-GENERATE ─────────────────────────────────────────
+
                 $db->commit();
-                set_flash('sukses', '✅ DP diverifikasi VALID. Status KPR otomatis berubah ke Akad Kredit!');
+                set_flash('sukses', '✅ DP diverifikasi VALID. Status KPR → Akad Kredit & jadwal cicilan otomatis dibuat!');
             } else {
                 $db->prepare("UPDATE pembayaran_dp SET status_verifikasi='ditolak' WHERE id_dp=?")->execute([$id_dp]);
                 $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'disetujui', ?, NOW())")
@@ -214,12 +260,45 @@ $list_kpr = $stmt_list->fetchAll();
     <title>Kelola Pengajuan KPR - RumahKPR Admin</title>
     <link rel="stylesheet" href="../../assets/css/admin.css?v=3">
     <style>
-        .kpr-detail-grid { display: grid; grid-template-columns: 1fr 350px; gap: 24px; align-items: start; }
-        .doc-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #475569; font-weight: 600; font-size: 13px; transition: .2s; }
-        .doc-link:hover { background: #e2e8f0; color: var(--primary); }
-        .track-timeline { position: relative; padding-left: 20px; border-left: 2px solid #e2e8f0; margin-top: 14px; }
-        .track-item { position: relative; margin-bottom: 16px; }
-        .track-dot { position: absolute; left: -27px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .kpr-detail-grid { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+        /* DOC LINK */
+        .doc-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; color: #475569; font-weight: 600; font-size: 13px; transition: .2s; }
+        .doc-link:hover { background: #e2e8f0; color: var(--primary); transform: translateY(-1px); }
+        /* TRACK TIMELINE */
+        .track-timeline { position: relative; padding-left: 22px; border-left: 2px solid #e2e8f0; margin-top: 14px; }
+        .track-item { position: relative; margin-bottom: 20px; }
+        .track-dot { position: absolute; left: -29px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--primary); }
+        .track-dot.latest { background: #22c55e; box-shadow: 0 0 0 3px #22c55e44; width: 16px; height: 16px; left: -30px; }
+        /* STEP INDICATOR */
+        .kpr-steps { display: flex; align-items: center; gap: 0; margin-bottom: 24px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 20px; overflow-x: auto; }
+        .kpr-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 90px; position: relative; }
+        .kpr-step:not(:last-child)::after { content: ''; position: absolute; right: -50%; top: 16px; width: 100%; height: 2px; background: #e2e8f0; z-index: 0; }
+        .kpr-step.done:not(:last-child)::after { background: #22c55e; }
+        .kpr-step.active:not(:last-child)::after { background: linear-gradient(90deg, #3b82f6, #e2e8f0); }
+        .step-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; position: relative; z-index: 1; border: 2px solid #e2e8f0; background: #f8fafc; color: #94a3b8; font-weight: 700; }
+        .kpr-step.done .step-circle { background: #22c55e; border-color: #22c55e; color: #fff; }
+        .kpr-step.active .step-circle { background: linear-gradient(135deg,#3b82f6,#6366f1); border-color: #3b82f6; color: #fff; box-shadow: 0 4px 12px #3b82f640; }
+        .kpr-step.rejected .step-circle { background: #ef4444; border-color: #ef4444; color: #fff; }
+        .step-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-align: center; }
+        .kpr-step.done .step-label { color: #22c55e; }
+        .kpr-step.active .step-label { color: #3b82f6; font-weight: 700; }
+        .kpr-step.rejected .step-label { color: #ef4444; }
+        /* DOC PREVIEW CARD */
+        .doc-preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; margin-top: 12px; }
+        .doc-card { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc; text-align: center; transition: .2s; }
+        .doc-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 16px #3b82f622; }
+        .doc-card-thumb { height: 100px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; overflow: hidden; }
+        .doc-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .doc-card-thumb .doc-icon { font-size: 40px; }
+        .doc-card-label { padding: 8px 6px; font-size: 11.5px; font-weight: 700; color: #475569; }
+        .doc-card a { display: block; text-decoration: none; color: inherit; }
+        /* CONTEXT PANEL */
+        .ctx-panel { background: linear-gradient(135deg,#f0f9ff,#e0f2fe); border: 1px solid #bae6fd; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+        .ctx-panel h4 { color: #0369a1; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .ctx-panel.warning { background: linear-gradient(135deg,#fffbeb,#fef3c7); border-color: #fde68a; }
+        .ctx-panel.warning h4 { color: #92400e; }
+        .ctx-panel.success { background: linear-gradient(135deg,#f0fdf4,#dcfce7); border-color: #86efac; }
+        .ctx-panel.success h4 { color: #14532d; }
         @media(max-width: 1024px) { .kpr-detail-grid { grid-template-columns: 1fr !important; } }
     </style>
 </head>
@@ -251,6 +330,31 @@ $list_kpr = $stmt_list->fetchAll();
                         <p>Daftar berkas, data keuangan pemohon, dan alur verifikasi KPR</p>
                     </div>
                     <a href="index.php" class="btn btn-gray">← Kembali</a>
+                </div>
+
+                <?php
+                // Tentukan step berdasarkan status
+                $all_steps = [
+                    'pengajuan_masuk'    => ['label'=>'Pengajuan Masuk',   'icon'=>'📥'],
+                    'verifikasi_dokumen' => ['label'=>'Verifikasi Dokumen','icon'=>'📋'],
+                    'survey'             => ['label'=>'Survey & BI Cek',   'icon'=>'🔍'],
+                    'disetujui'          => ['label'=>'Disetujui Bank',    'icon'=>'✅'],
+                    'akad_kredit'        => ['label'=>'Akad Kredit',       'icon'=>'🤝'],
+                ];
+                $rejected = $kpr['status_pengajuan'] === 'ditolak';
+                $step_order = array_keys($all_steps);
+                $current_idx = array_search($kpr['status_pengajuan'], $step_order);
+                ?>
+                <!-- STEP INDICATOR -->
+                <div class="kpr-steps">
+                    <?php if ($rejected): ?>
+                        <div style="display:flex;align-items:center;gap:10px;color:#ef4444;font-weight:700;"><span style="font-size:28px;">❌</span> Pengajuan ini telah <b>DITOLAK</b>. Status tidak bisa dilanjutkan.</div>
+                    <?php else: foreach ($all_steps as $skey => $sval): $sidx = array_search($skey, $step_order); $scls = $sidx < $current_idx ? 'done' : ($sidx == $current_idx ? 'active' : ''); ?>
+                        <div class="kpr-step <?= $scls ?>">
+                            <div class="step-circle"><?= $sidx < $current_idx ? '✓' : $sval['icon'] ?></div>
+                            <div class="step-label"><?= $sval['label'] ?></div>
+                        </div>
+                    <?php endforeach; endif; ?>
                 </div>
 
                 <div class="kpr-detail-grid">
@@ -371,46 +475,154 @@ $list_kpr = $stmt_list->fetchAll();
                         </div>
                         <?php endif; ?>
 
-                        <!-- Dokumen Persyaratan -->
+                        <!-- PANEL KONTEKSTUAL PER STATUS -->
+                        <?php
+                        // Helper: render doc card (image preview or icon)
+                        function doc_card($label, $icon, $path, $href) {
+                            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                            $is_img = in_array($ext, ['jpg','jpeg','png','gif','webp']);
+                            echo '<div class="doc-card">';
+                            echo '<a href="'.$href.'" target="_blank">';
+                            echo '<div class="doc-card-thumb">';
+                            if ($is_img) {
+                                echo '<img src="'.$href.'" alt="'.$label.'" loading="lazy">';
+                            } else {
+                                echo '<span class="doc-icon">'.$icon.'</span>';
+                            }
+                            echo '</div>';
+                            echo '<div class="doc-card-label">'.$label.'</div>';
+                            echo '</a></div>';
+                        }
+                        ?>
+
+                        <!-- STATUS: PENGAJUAN MASUK -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['pengajuan_masuk'])): ?>
                         <div class="panel">
-                            <div class="panel-header"><h3>📂 Dokumen Kelayakan KPR</h3></div>
+                            <div class="panel-header" style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;"><h3>📥 Pengajuan Masuk — Data Awal Customer</h3></div>
                             <div class="panel-body">
+                                <div class="ctx-panel">
+                                    <h4>ℹ️ Yang Perlu Diperiksa Sekarang</h4>
+                                    <ul style="margin:0;padding-left:18px;font-size:13px;color:#0369a1;line-height:1.8;">
+                                        <li>Periksa kelengkapan data pemohon (nama, email, no. HP)</li>
+                                        <li>Pastikan data properti dan bank KPR sesuai</li>
+                                        <li>Cek penghasilan vs estimasi cicilan (rasio max 30-40%)</li>
+                                        <li>Jika data valid, ubah status ke <b>Verifikasi Dokumen</b></li>
+                                    </ul>
+                                </div>
                                 <?php if (!$dokumen): ?>
-                                    <p style="color:var(--muted);">Dokumen belum diunggah oleh pemohon.</p>
+                                    <div class="ctx-panel warning"><h4>⚠️ Belum Ada Dokumen</h4><p style="margin:0;font-size:13px;color:#92400e;">Customer belum mengunggah dokumen persyaratan KPR.</p></div>
                                 <?php else: ?>
-                                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                                        <?php if ($dokumen['ktp']): ?>
-                                            <a href="../../uploads/ktp/<?= htmlspecialchars($dokumen['ktp']) ?>" target="_blank" class="doc-link">🪪 Lihat KTP</a>
-                                        <?php endif; ?>
-                                        <?php if ($dokumen['kk']): ?>
-                                            <a href="../../uploads/kk/<?= htmlspecialchars($dokumen['kk']) ?>" target="_blank" class="doc-link">👨‍👩‍👧‍👦 Lihat Kartu Keluarga</a>
-                                        <?php endif; ?>
-                                        <?php if ($dokumen['slip_gaji']): ?>
-                                            <a href="../../uploads/slip_gaji/<?= htmlspecialchars($dokumen['slip_gaji']) ?>" target="_blank" class="doc-link">💵 Lihat Slip Gaji</a>
-                                        <?php endif; ?>
-                                        <?php if ($dokumen['npwp']): ?>
-                                            <!-- NPWP disimpan di folder ktp di php pengajuan_kpr -->
-                                            <a href="../../uploads/ktp/<?= htmlspecialchars($dokumen['npwp']) ?>" target="_blank" class="doc-link">📄 Lihat NPWP</a>
-                                        <?php endif; ?>
-                                    </div>
+                                <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Dokumen yang telah diunggah customer:</p>
+                                <div class="doc-preview-grid">
+                                    <?php if ($dokumen['ktp']) doc_card('KTP','🪪',$dokumen['ktp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['ktp'])); ?>
+                                    <?php if ($dokumen['kk'])  doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen['kk'],'../../uploads/kk/'.htmlspecialchars($dokumen['kk'])); ?>
+                                    <?php if ($dokumen['slip_gaji']) doc_card('Slip Gaji','💵',$dokumen['slip_gaji'],'../../uploads/slip_gaji/'.htmlspecialchars($dokumen['slip_gaji'])); ?>
+                                    <?php if ($dokumen['npwp']) doc_card('NPWP','📄',$dokumen['npwp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['npwp'])); ?>
+                                </div>
                                 <?php endif; ?>
                             </div>
                         </div>
+                        <?php endif; ?>
 
-                        <!-- Catatan Admin & Tracking -->
+                        <!-- STATUS: VERIFIKASI DOKUMEN -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['verifikasi_dokumen'])): ?>
+                        <div class="panel" style="border:2px solid #3b82f6;">
+                            <div class="panel-header" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;"><h3>📋 Verifikasi Dokumen — Berkas yang Diupload</h3></div>
+                            <div class="panel-body">
+                                <div class="ctx-panel">
+                                    <h4>📌 Panduan Verifikasi Berkas</h4>
+                                    <ul style="margin:0;padding-left:18px;font-size:13px;color:#0369a1;line-height:1.8;">
+                                        <li><b>KTP</b>: Pastikan foto jelas, nama sesuai pengajuan, belum kadaluarsa</li>
+                                        <li><b>KK</b>: Pastikan nama pemohon tercantum di KK</li>
+                                        <li><b>Slip Gaji</b>: Periksa penghasilan konsisten dengan yang diinput</li>
+                                        <li><b>NPWP</b>: Wajib jika penghasilan ≥ Rp 4,5 juta/bulan</li>
+                                        <li>Jika semua valid, ubah status ke <b>Survey & BI Cek</b></li>
+                                    </ul>
+                                </div>
+                                <?php if (!$dokumen): ?>
+                                    <div class="ctx-panel warning"><h4>⚠️ Dokumen Belum Diunggah</h4><p style="margin:0;font-size:13px;color:#92400e;">Customer belum mengunggah dokumen. Hubungi customer untuk segera mengupload berkas persyaratan.</p></div>
+                                <?php else: ?>
+                                <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Klik gambar/ikon untuk membuka dokumen fullscreen:</p>
+                                <div class="doc-preview-grid">
+                                    <?php if ($dokumen['ktp']) doc_card('KTP Pemohon','🪪',$dokumen['ktp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['ktp'])); ?>
+                                    <?php if ($dokumen['kk'])  doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen['kk'],'../../uploads/kk/'.htmlspecialchars($dokumen['kk'])); ?>
+                                    <?php if ($dokumen['slip_gaji']) doc_card('Slip Gaji','💵',$dokumen['slip_gaji'],'../../uploads/slip_gaji/'.htmlspecialchars($dokumen['slip_gaji'])); ?>
+                                    <?php if ($dokumen['npwp']) doc_card('NPWP','📄',$dokumen['npwp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['npwp'])); ?>
+                                </div>
+                                <?php $total_dok = (int)(!empty($dokumen['ktp'])) + (int)(!empty($dokumen['kk'])) + (int)(!empty($dokumen['slip_gaji'])); ?>
+                                <div style="margin-top:14px;padding:10px 14px;border-radius:8px;background:<?= $total_dok >= 3 ? '#f0fdf4;border:1px solid #86efac' : '#fffbeb;border:1px solid #fde68a' ?>;font-size:13px;">
+                                    <?= $total_dok >= 3 ? '✅ <b style="color:#15803d;">Dokumen lengkap</b> ('.($dokumen['npwp']?'4':'3').' berkas). Siap untuk proses selanjutnya.' : '⚠️ <b style="color:#92400e;">Dokumen belum lengkap</b> ('.$total_dok.' dari 3 dokumen wajib).' ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- STATUS: SURVEY -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['survey'])): ?>
+                        <div class="panel" style="border:2px solid #8b5cf6;">
+                            <div class="panel-header" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;"><h3>🔍 Survey Lokasi & BI Checking</h3></div>
+                            <div class="panel-body">
+                                <div class="ctx-panel" style="background:linear-gradient(135deg,#faf5ff,#ede9fe);border-color:#c4b5fd;">
+                                    <h4 style="color:#6d28d9;">📌 Tahap Survey & BI Checking</h4>
+                                    <ul style="margin:0;padding-left:18px;font-size:13px;color:#6d28d9;line-height:1.8;">
+                                        <li><b>Survey Lokasi</b>: Verifikasi fisik unit rumah, kondisi bangunan, dan legalitas tanah</li>
+                                        <li><b>BI/SLIK Checking</b>: Cek riwayat kredit nasabah (Kol 1 = lancar = layak KPR)</li>
+                                        <li>Jika lolos survey & BI bersih, ubah ke <b>Disetujui Bank</b></li>
+                                        <li>Jika gagal, gunakan status <b>Ditolak</b> dengan keterangan jelas</li>
+                                    </ul>
+                                </div>
+                                <p style="font-size:13px;font-weight:600;margin-bottom:8px;">📂 Dokumen yang diserahkan customer:</p>
+                                <?php if (!$dokumen): ?>
+                                    <div class="ctx-panel warning"><h4>⚠️ Dokumen Belum Ada</h4></div>
+                                <?php else: ?>
+                                <div class="doc-preview-grid">
+                                    <?php if ($dokumen['ktp']) doc_card('KTP','🪪',$dokumen['ktp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['ktp'])); ?>
+                                    <?php if ($dokumen['kk'])  doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen['kk'],'../../uploads/kk/'.htmlspecialchars($dokumen['kk'])); ?>
+                                    <?php if ($dokumen['slip_gaji']) doc_card('Slip Gaji','💵',$dokumen['slip_gaji'],'../../uploads/slip_gaji/'.htmlspecialchars($dokumen['slip_gaji'])); ?>
+                                    <?php if ($dokumen['npwp']) doc_card('NPWP','📄',$dokumen['npwp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['npwp'])); ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- STATUS: DISETUJUI / AKAD / DITOLAK -->
+                        <?php if (in_array($kpr['status_pengajuan'], ['disetujui','akad_kredit','ditolak'])): ?>
                         <div class="panel">
-                            <div class="panel-header"><h3>📜 Riwayat Tracking Status</h3></div>
+                            <div class="panel-header"><h3>📂 Dokumen Persyaratan KPR</h3></div>
+                            <div class="panel-body">
+                                <?php if (!$dokumen): ?>
+                                    <p style="color:var(--muted);">Dokumen belum diunggah.</p>
+                                <?php else: ?>
+                                <div class="doc-preview-grid">
+                                    <?php if ($dokumen['ktp']) doc_card('KTP Pemohon','🪪',$dokumen['ktp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['ktp'])); ?>
+                                    <?php if ($dokumen['kk'])  doc_card('Kartu Keluarga','👨‍👩‍👧‍👦',$dokumen['kk'],'../../uploads/kk/'.htmlspecialchars($dokumen['kk'])); ?>
+                                    <?php if ($dokumen['slip_gaji']) doc_card('Slip Gaji','💵',$dokumen['slip_gaji'],'../../uploads/slip_gaji/'.htmlspecialchars($dokumen['slip_gaji'])); ?>
+                                    <?php if ($dokumen['npwp']) doc_card('NPWP','📄',$dokumen['npwp'],'../../uploads/ktp/'.htmlspecialchars($dokumen['npwp'])); ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Riwayat Tracking Status (enhanced) -->
+                        <div class="panel">
+                            <div class="panel-header"><h3>📜 Riwayat Alur Proses KPR</h3></div>
                             <div class="panel-body">
                                 <?php if (empty($tracking)): ?>
                                     <p style="color:var(--muted); text-align:center;">Belum ada riwayat update status.</p>
                                 <?php else: ?>
                                     <div class="track-timeline">
-                                        <?php foreach($tracking as $t): ?>
+                                        <?php foreach($tracking as $ti => $t): ?>
                                             <div class="track-item">
-                                                <div class="track-dot"></div>
-                                                <div style="font-size:11px; color:var(--muted);"><?= format_datetime($t['tanggal_update']) ?></div>
+                                                <div class="track-dot <?= $ti === 0 ? 'latest' : '' ?>"></div>
+                                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                                    <span style="font-size:11px; color:var(--muted);"><?= format_datetime($t['tanggal_update']) ?></span>
+                                                    <?php if ($ti === 0): ?><span style="font-size:10px;background:#22c55e;color:#fff;padding:1px 7px;border-radius:20px;font-weight:700;">TERKINI</span><?php endif; ?>
+                                                </div>
                                                 <div style="margin:4px 0 6px;"><?= badge_kpr($t['status']) ?></div>
-                                                <p style="font-size:13px; color:var(--sub); line-height:1.4;"><?= htmlspecialchars($t['keterangan']) ?></p>
+                                                <p style="font-size:13px; color:var(--sub); line-height:1.5; background:#f8fafc; padding:8px 10px; border-radius:6px; border-left:3px solid #3b82f6; margin:0;"><?= htmlspecialchars($t['keterangan']) ?></p>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>

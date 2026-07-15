@@ -52,8 +52,60 @@ if ($id > 0 && in_array($action, ['valid_dp', 'tolak_dp'])) {
             $db->prepare("INSERT INTO tracking_pengajuan (id_pengajuan, status, keterangan, tanggal_update) VALUES (?, 'akad_kredit', 'Pembayaran Uang Muka (DP) tervalidasi VALID. Pengajuan berlanjut ke tahap Akad Kredit.', NOW())")->execute([$id_pengajuan]);
             // 4. Kunci unit rumah sebagai terjual
             $db->prepare("UPDATE rumah SET status = 'terjual' WHERE id_rumah = ?")->execute([$id_rumah]);
+
+            // ── 5. AUTO-GENERATE JADWAL CICILAN ──────────────────────────────
+            // Cek apakah cicilan sudah pernah dibuat
+            $cek_cic = $db->prepare("SELECT COUNT(*) FROM cicilan_kpr WHERE id_pengajuan=?");
+            $cek_cic->execute([$id_pengajuan]);
+            if ($cek_cic->fetchColumn() == 0) {
+                // Ambil detail KPR untuk menghitung cicilan
+                $kpr_gen = $db->prepare("
+                    SELECT pk.uang_muka, pk.tenor, b.bunga_kpr, r.harga
+                    FROM pengajuan_kpr pk
+                    JOIN bank b ON pk.id_bank = b.id_bank
+                    JOIN rumah r ON pk.id_rumah = r.id_rumah
+                    WHERE pk.id_pengajuan = ?
+                ");
+                $kpr_gen->execute([$id_pengajuan]);
+                $kpr_g = $kpr_gen->fetch();
+                if ($kpr_g) {
+                    $harga_g       = (float)$kpr_g['harga'];
+                    $dp_g          = (float)$pay['jumlah_dp']; // Gunakan nominal DP yang dibayar
+                    $pokok_pinjaman= max(0, $harga_g - $dp_g);
+                    $bunga_pa      = (float)$kpr_g['bunga_kpr'] / 100;
+                    $tenor_bulan   = (int)$kpr_g['tenor'] * 12;
+                    $bunga_pb      = $bunga_pa / 12;
+
+                    if ($pokok_pinjaman > 0 && $tenor_bulan > 0) {
+                        if ($bunga_pb > 0) {
+                            $cicilan_bulanan = $pokok_pinjaman * ($bunga_pb * pow(1 + $bunga_pb, $tenor_bulan)) / (pow(1 + $bunga_pb, $tenor_bulan) - 1);
+                        } else {
+                            $cicilan_bulanan = $pokok_pinjaman / $tenor_bulan;
+                        }
+
+                        $saldo_pokok = $pokok_pinjaman;
+                        $tgl_mulai   = new DateTime();
+                        $tgl_mulai->modify('+1 month');
+
+                        for ($bulan = 1; $bulan <= $tenor_bulan; $bulan++) {
+                            $bunga_bln    = $saldo_pokok * $bunga_pb;
+                            $cicilan_pokok= $cicilan_bulanan - $bunga_bln;
+                            $saldo_pokok -= $cicilan_pokok;
+                            if ($saldo_pokok < 0) $saldo_pokok = 0;
+
+                            $tgl_jatuh = clone $tgl_mulai;
+                            $tgl_jatuh->modify('+' . ($bulan - 1) . ' month');
+
+                            $db->prepare("INSERT INTO cicilan_kpr (id_pengajuan, bulan_ke, tanggal_jatuh_tempo, jumlah_cicilan, pokok, bunga, status_bayar) VALUES (?, ?, ?, ?, ?, ?, 'belum')")
+                               ->execute([$id_pengajuan, $bulan, $tgl_jatuh->format('Y-m-d'), round($cicilan_bulanan, 2), round($cicilan_pokok, 2), round($bunga_bln, 2)]);
+                        }
+                    }
+                }
+            }
+            // ── END AUTO-GENERATE ─────────────────────────────────────────────
+
             $db->commit();
-            set_flash('sukses', '✅ Pembayaran DP diverifikasi VALID. Unit KPR diperbarui ke tahap Akad Kredit & status rumah Terjual.');
+            set_flash('sukses', '✅ Pembayaran DP diverifikasi VALID. Unit KPR diperbarui ke tahap Akad Kredit, status rumah Terjual, dan jadwal cicilan otomatis dibuat.');
         } elseif ($action === 'tolak_dp') {
             $db->beginTransaction();
             $db->prepare("UPDATE pembayaran_dp SET status_verifikasi = 'ditolak' WHERE id_dp = ?")->execute([$id]);

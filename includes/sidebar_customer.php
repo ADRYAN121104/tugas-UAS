@@ -9,7 +9,7 @@ function sidebar_customer($aktif = 'dashboard') {
         ['label'=>'Dashboard',         'ico'=>'📊', 'key'=>'dashboard',          'href'=>$base.'customer/dashboard.php'],
         ['label'=>'Booking Saya',      'ico'=>'📋', 'key'=>'booking_saya',       'href'=>$base.'customer/booking_saya.php'],
         ['label'=>'Riwayat Booking',   'ico'=>'🕐', 'key'=>'riwayat_booking',    'href'=>$base.'customer/riwayat_booking.php'],
-        ['label'=>'Pembayaran DP',     'ico'=>'💰', 'key'=>'pembayaran',         'href'=>$base.'customer/pembayaran.php'],
+        ['label'=>'Pembayaran DP',     'ico'=>'💰', 'key'=>'pembayaran',         'href'=>$base.'customer/bayar_dp.php'],
         ['label'=>'Pengajuan KPR',     'ico'=>'📝', 'key'=>'pengajuan_kpr',     'href'=>$base.'customer/pengajuan_kpr.php'],
         ['label'=>'Status KPR',        'ico'=>'📈', 'key'=>'status_kpr',        'href'=>$base.'customer/status_kpr.php'],
         ['label'=>'Cicilan KPR',       'ico'=>'💳', 'key'=>'cicilan',           'href'=>$base.'customer/cicilan.php'],
