@@ -12,7 +12,7 @@
             <!-- COL 1: Brand -->
             <div class="footer-col-brand">
                 <a href="/perumahan_kpr/index.php" class="footer-logo">
-                    <div class="footer-logo-icon">🏠</div>
+                    <div class="footer-logo-icon"><img src="/perumahan_kpr/assets/images/logo/logo.png" alt="Rumah Kita Logo" style="width:50px;height:50px;object-fit:contain;border-radius:6px;background:#fff;padding:3px;"></div>
                     <span>Rumah<span style="color:#60a5fa;">KPR</span></span>
                 </a>
                 <p class="footer-tagline">Platform KPR Perumahan terpercaya. Temukan rumah impian dan wujudkan kredit Anda dengan mudah, cepat, dan transparan.</p>

@@ -247,14 +247,74 @@ $persen_lunas = count($cicilan_list) > 0 ? round(count(array_filter($cicilan_lis
         <p style="font-size:12px;color:#64748b;margin:4px 0 0;">Daftar tagihan, bunga, pokok dan status pembayaran Anda</p>
     </div>
 
-    <!-- INFO REKENING BAYAR -->
-    <div style="background:#eff6ff;border-bottom:1px solid #dbeafe;padding:14px 22px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:22px;">🏦</span>
-        <div style="font-size:13px;line-height:1.7;">
-            Transfer ke: <b>BCA 1234567890</b> a.n. <b>PT RumahKPR Indonesia</b> &bull;
-            Nominal normal: <b style="color:#2563eb;"><?= $kpr_aktif['cicilan_per_bulan'] ? format_rupiah($kpr_aktif['cicilan_per_bulan']) : 'Sesuai tagihan' ?></b>
+    <!-- INFO REKENING BAYAR DENGAN PILIHAN BEBERAPA BANK -->
+    <div style="background:#eff6ff;border-bottom:1px solid #dbeafe;padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <span style="font-size:24px;">🏦</span>
+            <div style="font-size:14px;font-weight:700;color:#1e40af;">Opsi Rekening Transfer Bank Tujuan Pembayaran Cicilan:</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-bottom: 14px;">
+            <?php 
+            $c_banks = [
+                'bca' => 'BCA',
+                'mandiri' => 'Mandiri',
+                'bri' => 'BRI',
+                'bni' => 'BNI',
+                'btn' => 'BTN'
+            ];
+            $first_c = true;
+            foreach ($c_banks as $key => $name): ?>
+                <button type="button" class="btn-select-bank-c" onclick="selectCicilanBank('<?= $key ?>', this)" 
+                    style="padding: 8px; border: 2px solid <?= $first_c ? '#2563eb' : '#cbd5e1' ?>; background: <?= $first_c ? '#e0f2fe' : '#fff' ?>; color: <?= $first_c ? '#2563eb' : '#475569' ?>; border-radius: 6px; font-weight: 800; font-size: 12px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                    <?= $name ?>
+                </button>
+            <?php $first_c = false; endforeach; ?>
+        </div>
+
+        <div style="background:#fff; border:1px solid #dbeafe; border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; color:#334155;">
+            <div id="c-bank-bca" class="c-bank-panel">
+                <b>Bank BCA:</b> No. Rekening <code style="font-size:14px;font-weight:800;color:#2563eb;">1234 5678 90</code> a.n. <b>PT RumahKPR Indonesia</b>
+            </div>
+            <div id="c-bank-mandiri" class="c-bank-panel" style="display:none;">
+                <b>Bank Mandiri:</b> No. Rekening <code style="font-size:14px;font-weight:800;color:#2563eb;">123 45 67890 123</code> a.n. <b>PT RumahKPR Indonesia</b>
+            </div>
+            <div id="c-bank-bri" class="c-bank-panel" style="display:none;">
+                <b>Bank BRI:</b> No. Rekening <code style="font-size:14px;font-weight:800;color:#2563eb;">1234 56 789012 34 5</code> a.n. <b>PT RumahKPR Indonesia</b>
+            </div>
+            <div id="c-bank-bni" class="c-bank-panel" style="display:none;">
+                <b>Bank BNI:</b> No. Rekening <code style="font-size:14px;font-weight:800;color:#2563eb;">1234 567 890</code> a.n. <b>PT RumahKPR Indonesia</b>
+            </div>
+            <div id="c-bank-btn" class="c-bank-panel" style="display:none;">
+                <b>Bank BTN:</b> No. Rekening <code style="font-size:14px;font-weight:800;color:#2563eb;">1234 5678 9012 3</code> a.n. <b>PT RumahKPR Indonesia</b>
+            </div>
+            <div style="margin-top: 6px; font-size:12px; color:#64748b;">
+                Nominal Normal: <b style="color:#2563eb; font-size:13px;"><?= $kpr_aktif['cicilan_per_bulan'] ? format_rupiah($kpr_aktif['cicilan_per_bulan']) : 'Sesuai tagihan' ?></b>
+            </div>
         </div>
     </div>
+
+    <script>
+    function selectCicilanBank(bank, btn) {
+        // Reset all buttons
+        document.querySelectorAll('.btn-select-bank-c').forEach(b => {
+            b.style.borderColor = '#cbd5e1';
+            b.style.background = '#fff';
+            b.style.color = '#475569';
+        });
+        // Activate current button
+        btn.style.borderColor = '#2563eb';
+        btn.style.background = '#e0f2fe';
+        btn.style.color = '#2563eb';
+
+        // Hide all panels
+        document.querySelectorAll('.c-bank-panel').forEach(p => {
+            p.style.display = 'none';
+        });
+        // Show selected panel
+        document.getElementById('c-bank-' + bank).style.display = 'block';
+    }
+    </script>
 
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:13.5px;">

@@ -20,8 +20,11 @@ function sidebar_customer($aktif = 'dashboard') {
     ?>
     <aside class="csidebar" id="csidebar">
         <a href="<?= $base ?>index.php" class="csb-brand">
-            <strong>🏠 RumahKPR</strong>
-            <small>Portal Customer</small>
+            <img src="<?= $base ?>assets/images/logo/logo.png" alt="Logo" style="width:36px;height:36px;object-fit:contain;">
+            <div>
+                <strong>RumahKPR</strong>
+                <small>Portal Customer</small>
+            </div>
         </a>
         <div class="csb-profile">
             <div class="csb-avatar"><?= $inisial ?></div>

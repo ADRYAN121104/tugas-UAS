@@ -26,7 +26,7 @@ $current_dir = basename(dirname($_SERVER['SCRIPT_NAME']));
 <nav class="navbar">
     <div class="nav-container">
         <a href="<?= $base ?>index.php" class="brand">
-            <div class="brand-icon">🏠</div>
+            <div class="brand-icon"><img src="<?= $base ?>assets/images/logo/logo.png" alt="Rumah Kita Logo"></div>
             <span>Rumah<span style="color:#2563eb">KPR</span></span>
         </a>
         <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>

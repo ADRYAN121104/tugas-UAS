@@ -199,16 +199,85 @@ $cicilan = hitung_cicilan($pengajuan['harga'], $pengajuan['uang_muka'], $pengaju
                 <div id="tab-manual" style="padding:28px;display:none;">
                     <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;color:#0f172a;">🏦 Transfer Manual</h3>
                     <div style="background:#eff6ff;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1e40af;">
-                        ⚠️ <b>Perhatian:</b> Transfer manual memerlukan verifikasi admin (1×24 jam). Untuk konfirmasi lebih cepat, gunakan <b>Payment Gateway</b>.
+                        ⚠️ <b>Perhatian:</b> Transfer manual memerlukan verifikasi admin (1×24 jam). Silakan pilih rekening bank tujuan transfer Anda di bawah ini.
                     </div>
 
-                    <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;border:1px solid #e2e8f0;">
-                        <b>Transfer ke rekening:</b><br><br>
-                        <b>Bank BCA:</b><br>
-                        No. Rek: <code style="font-size:14px;font-weight:700;color:#2563eb;">1234 5678 90</code><br>
-                        a.n: PT RumahKPR Indonesia<br><br>
-                        Jumlah: <b style="font-size:14px;"><?= format_rupiah($pengajuan['uang_muka']) ?></b>
+                    <!-- Pilih Bank -->
+                    <div style="margin-bottom: 18px;">
+                        <label style="display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:8px;">PILIH BANK TUJUAN TRANSFER:</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px;">
+                            <?php 
+                            $banks = [
+                                'bca' => 'BCA',
+                                'mandiri' => 'Mandiri',
+                                'bri' => 'BRI',
+                                'bni' => 'BNI',
+                                'btn' => 'BTN'
+                            ];
+                            $first = true;
+                            foreach ($banks as $key => $name): ?>
+                                <button type="button" class="btn-select-bank" onclick="selectTransferBank('<?= $key ?>', this)" 
+                                    style="padding: 10px; border: 2px solid <?= $first ? '#2563eb' : '#e2e8f0' ?>; background: <?= $first ? '#eff6ff' : '#fff' ?>; color: <?= $first ? '#2563eb' : '#475569' ?>; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                    <?= $name ?>
+                                </button>
+                            <?php $first = false; endforeach; ?>
+                        </div>
                     </div>
+
+                    <!-- Detail Rekening (Hidden/Shown via JS) -->
+                    <div style="background:#f8fafc;border-radius:12px;padding:18px;margin-bottom:20px;font-size:13px;border:1px solid #e2e8f0; position: relative; overflow: hidden;">
+                        <div id="bank-info-bca" class="bank-details-panel">
+                            <b>🏦 Bank BCA</b><br>
+                            Nomor Rekening: <code style="font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;">1234 5678 90</code><br>
+                            Atas Nama: <b>PT RumahKPR Indonesia</b>
+                        </div>
+                        <div id="bank-info-mandiri" class="bank-details-panel" style="display:none;">
+                            <b>🏦 Bank Mandiri</b><br>
+                            Nomor Rekening: <code style="font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;">123 45 67890 123</code><br>
+                            Atas Nama: <b>PT RumahKPR Indonesia</b>
+                        </div>
+                        <div id="bank-info-bri" class="bank-details-panel" style="display:none;">
+                            <b>🏦 Bank BRI</b><br>
+                            Nomor Rekening: <code style="font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;">1234 56 789012 34 5</code><br>
+                            Atas Nama: <b>PT RumahKPR Indonesia</b>
+                        </div>
+                        <div id="bank-info-bni" class="bank-details-panel" style="display:none;">
+                            <b>🏦 Bank BNI</b><br>
+                            Nomor Rekening: <code style="font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;">1234 567 890</code><br>
+                            Atas Nama: <b>PT RumahKPR Indonesia</b>
+                        </div>
+                        <div id="bank-info-btn" class="bank-details-panel" style="display:none;">
+                            <b>🏦 Bank BTN</b><br>
+                            Nomor Rekening: <code style="font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;">1234 5678 9012 3</code><br>
+                            Atas Nama: <b>PT RumahKPR Indonesia</b>
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 12px;">
+                            Nominal Transfer Uang Muka:<br>
+                            <b style="font-size:16px; color:#10b981;"><?= format_rupiah($pengajuan['uang_muka']) ?></b>
+                        </div>
+                    </div>
+
+                    <script>
+                    function selectTransferBank(bank, btn) {
+                        // Reset all buttons
+                        document.querySelectorAll('.btn-select-bank').forEach(b => {
+                            b.style.borderColor = '#e2e8f0';
+                            b.style.background = '#fff';
+                            b.style.color = '#475569';
+                        });
+                        // Activate current button
+                        btn.style.borderColor = '#2563eb';
+                        btn.style.background = '#eff6ff';
+                        btn.style.color = '#2563eb';
+
+                        // Hide all panel details
+                        document.querySelectorAll('.bank-details-panel').forEach(p => {
+                            p.style.display = 'none';
+                        });
+                        // Show selected bank detail panel
+                        document.getElementById('bank-info-' + bank).style.display = 'block';
+                    }
+                    </script>
 
                     <form method="POST" enctype="multipart/form-data">
                         <div style="margin-bottom:16px;">

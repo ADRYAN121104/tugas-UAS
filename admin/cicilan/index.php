@@ -345,78 +345,89 @@ $total_dp_pending      = (int)$db->query("SELECT COUNT(*) FROM pembayaran_dp WHE
                                     ? min($k['jml_cicilan'] - $k['jml_lunas'], (int)ceil($sisa_k / $cicilan_pb_k))
                                     : 0;
                                 ?>
-                                <tr>
-                                    <td><b><?= htmlspecialchars($k['nama_lengkap']) ?></b></td>
-                                    <td>
-                                        <b><?= htmlspecialchars($k['nama_perumahan']) ?></b><br>
-                                        <small style="color:var(--primary);font-weight:700;">Blok <?= htmlspecialchars($k['blok'].'-'.$k['kode_unit']) ?></small>
+                                <tr style="transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 16px 12px; vertical-align: middle;">
+                                        <span style="font-weight: 800; font-size: 14px; color: #0f172a; display: block;"><?= htmlspecialchars($k['nama_lengkap']) ?></span>
+                                        <small style="color: #64748b; font-weight: 500;">ID KPR: #<?= $k['id_pengajuan'] ?></small>
                                     </td>
-                                    <td>
-                                        <?= htmlspecialchars($k['nama_bank']) ?><br>
-                                        <small style="color:var(--success);font-weight:700;"><?= $k['bunga_kpr'] ?>% / th</small>
+                                    <td style="padding: 16px 12px; vertical-align: middle;">
+                                        <span style="font-weight: 800; color: #1e293b; display: block; font-size: 13.5px;"><?= htmlspecialchars($k['nama_perumahan']) ?></span>
+                                        <span style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; margin-top: 4px;">Blok <?= htmlspecialchars($k['blok'].'-'.$k['kode_unit']) ?></span>
                                     </td>
-                                    <td style="min-width:210px;">
+                                    <td style="padding: 16px 12px; vertical-align: middle;">
+                                        <span style="font-weight: 700; color: #334155; display: block;"><?= htmlspecialchars($k['nama_bank']) ?></span>
+                                        <span style="color: #059669; font-weight: 700; font-size: 12px;">📊 Bunga: <?= $k['bunga_kpr'] ?>% / th</span>
+                                    </td>
+                                    <td style="padding: 16px 12px; min-width: 250px;">
                                         <?php
                                         $dp_s = $k['dp_status'] ?? '';
-                                        $dp_badge = $dp_s === 'valid' ? '<span style="color:#10b981;font-weight:800;">✅ Valid</span>'
-                                            : ($dp_s === 'pending' ? '<span style="color:#d97706;font-weight:800;">⏳ Pending</span>'
-                                            : '<span style="color:#94a3b8;font-weight:700;">— Belum</span>');
+                                        $dp_badge = $dp_s === 'valid' ? '<span style="background: #d1fae5; color: #065f46; padding: 1px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 800;">✅ Valid</span>'
+                                            : ($dp_s === 'pending' ? '<span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 800;">⏳ Pending</span>'
+                                            : '<span style="background: #f3f4f6; color: #6b7280; padding: 1px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700;">— Belum</span>');
                                         ?>
-                                        <table style="font-size:11.5px;width:100%;border-collapse:collapse;line-height:1.9;">
-                                            <tr>
-                                                <td style="color:#64748b;">🏦 DP Masuk</td>
-                                                <td style="font-weight:800;color:#d97706;text-align:right;"><?= format_rupiah($dp_masuk_k) ?> <?= $dp_badge ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#64748b;">💳 Cicilan Masuk</td>
-                                                <td style="font-weight:800;color:#10b981;text-align:right;"><?= format_rupiah($cicilan_masuk_k) ?></td>
-                                            </tr>
-                                            <tr style="border-top:1px solid #e2e8f0;">
-                                                <td style="color:#64748b;">💰 Total Masuk</td>
-                                                <td style="font-weight:800;color:#1e3a8a;text-align:right;"><?= format_rupiah($total_masuk_k) ?></td>
-                                            </tr>
-                                            <tr style="background:#fff5f5;">
-                                                <td style="color:#ef4444;font-weight:700;">🚨 Sisa Lunas</td>
-                                                <td style="font-weight:900;color:#ef4444;text-align:right;"><?= format_rupiah($sisa_k) ?></td>
-                                            </tr>
-                                            <?php if ($sisa_bulan_k > 0 && $cicilan_pb_k > 0): ?>
-                                            <tr style="background:#eff6ff;">
-                                                <td style="color:#2563eb;font-weight:700;">📅 Sisa Cicilan</td>
-                                                <td style="font-weight:800;color:#2563eb;text-align:right;"><?= $sisa_bulan_k ?>× · <?= format_rupiah(min($cicilan_pb_k, $sisa_k)) ?>/bln</td>
-                                            </tr>
-                                            <?php elseif ($sisa_k <= 0): ?>
-                                            <tr style="background:#d1fae5;">
-                                                <td colspan="2" style="text-align:center;font-weight:800;color:#065f46;">🎉 LUNAS PENUH</td>
-                                            </tr>
-                                            <?php endif; ?>
-                                        </table>
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
+                                            <table style="font-size: 12px; width: 100%; border-collapse: collapse; line-height: 1.8;">
+                                                <tr>
+                                                    <td style="color: #64748b; font-weight: 600;">🏦 DP Masuk</td>
+                                                    <td style="font-weight: 800; color: #d97706; text-align: right;"><?= format_rupiah($dp_masuk_k) ?> <?= $dp_badge ?></td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="color: #64748b; font-weight: 600;">💳 Cicilan Masuk</td>
+                                                    <td style="font-weight: 800; color: #10b981; text-align: right;"><?= format_rupiah($cicilan_masuk_k) ?></td>
+                                                </tr>
+                                                <tr style="border-top: 1px dashed #e2e8f0; margin-top: 4px; padding-top: 4px;">
+                                                    <td style="color: #475569; font-weight: 700;">💰 Total Masuk</td>
+                                                    <td style="font-weight: 900; color: #1e3a8a; text-align: right;"><?= format_rupiah($total_masuk_k) ?></td>
+                                                </tr>
+                                                <tr style="background: #fee2e2; border-radius: 6px;">
+                                                    <td style="color: #b91c1c; font-weight: 800; padding: 2px 6px;">🚨 Sisa Pelunasan</td>
+                                                    <td style="font-weight: 900; color: #b91c1c; text-align: right; padding: 2px 6px;"><?= format_rupiah($sisa_k) ?></td>
+                                                </tr>
+                                                <?php if ($sisa_bulan_k > 0 && $cicilan_pb_k > 0): ?>
+                                                <tr style="background: #e0f2fe; border-radius: 6px;">
+                                                    <td style="color: #0369a1; font-weight: 800; padding: 2px 6px;">📅 Sisa Cicilan</td>
+                                                    <td style="font-weight: 800; color: #0369a1; text-align: right; padding: 2px 6px;"><?= $sisa_bulan_k ?>× (<?= format_rupiah(min($cicilan_pb_k, $sisa_k)) ?>/bln)</td>
+                                                </tr>
+                                                <?php elseif ($sisa_k <= 0): ?>
+                                                <tr style="background: #d1fae5; border-radius: 6px;">
+                                                    <td colspan="2" style="text-align: center; font-weight: 900; color: #065f46; padding: 2px 6px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">🎉 LUNAS SEPENUHNYA</td>
+                                                </tr>
+                                                <?php endif; ?>
+                                            </table>
+                                        </div>
                                     </td>
-                                    <td><?= $k['tenor'] ?> tahun</td>
-                                    <td><?= badge_kpr($k['status_pengajuan']) ?></td>
-                                    <td>
+                                    <td style="padding: 16px 12px; vertical-align: middle; font-weight: 700; color: #334155;"><?= $k['tenor'] ?> tahun</td>
+                                    <td style="padding: 16px 12px; vertical-align: middle;"><?= badge_kpr($k['status_pengajuan']) ?></td>
+                                    <td style="padding: 16px 12px; vertical-align: middle;">
                                         <?php if ($k['jml_cicilan'] > 0): ?>
-                                            <div style="display:flex;align-items:center;gap:8px;">
-                                                <div style="flex:1;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
-                                                    <div style="height:100%;width:<?= round($k['jml_lunas']/$k['jml_cicilan']*100) ?>%;background:linear-gradient(90deg,#10b981,#059669);border-radius:4px;transition:.3s;"></div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; color: #059669;">
+                                                    <span>Progres</span>
+                                                    <span><?= $k['jml_lunas'] ?>/<?= $k['jml_cicilan'] ?> bln</span>
                                                 </div>
-                                                <small style="font-weight:700;color:var(--success);white-space:nowrap;"><?= $k['jml_lunas'] ?>/<?= $k['jml_cicilan'] ?></small>
+                                                <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                                                    <div style="height: 100%; width: <?= round($k['jml_lunas']/$k['jml_cicilan']*100) ?>%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
+                                                </div>
                                             </div>
                                         <?php else: ?>
-                                            <span style="color:var(--muted);font-size:12px;">Belum di-generate</span>
+                                            <span style="color: #94a3b8; font-size: 12px; font-weight: 600; font-style: italic;">Belum di-generate</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="text-align:center;">
-                                        <div class="aksi-table" style="flex-direction:column;">
-                                        <?php if ($k['jml_cicilan'] == 0 && $k['status_pengajuan']==='akad_kredit'): ?>
-                                            <a href="index.php?action=generate&id=<?= $k['id_pengajuan'] ?>"
-                                               class="btn btn-success btn-sm" style="width:100%;justify-content:center;"
-                                               onclick="return confirm('Generate jadwal cicilan untuk KPR ini?\n\nJadwal cicilan akan otomatis dibuat berdasarkan tenor dan bunga bank.')">
-                                                ⚙️ Generate Jadwal
+                                    <td style="padding: 16px 12px; vertical-align: middle; text-align: center;">
+                                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                                            <?php if ($k['jml_cicilan'] == 0 && $k['status_pengajuan']==='akad_kredit'): ?>
+                                                <a href="index.php?action=generate&id=<?= $k['id_pengajuan'] ?>"
+                                                   class="btn btn-success btn-sm" style="width: 100%; justify-content: center; font-weight: 800; font-size: 12px; box-shadow: 0 2px 6px rgba(16,185,129,0.2);"
+                                                   onclick="return confirm('Generate jadwal cicilan untuk KPR ini?\n\nJadwal cicilan akan otomatis dibuat berdasarkan tenor dan bunga bank.')">
+                                                    ⚙️ Generate Jadwal
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="index.php?id_pengajuan=<?= $k['id_pengajuan'] ?>" class="btn-edit" style="width: 100%; justify-content: center; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                                📋 Kelola Detail
                                             </a>
-                                        <?php endif; ?>
-                                        <a href="index.php?id_pengajuan=<?= $k['id_pengajuan'] ?>" class="btn-edit" style="width:100%;justify-content:center;">
-                                            📋 Kelola Detail
-                                        </a>
+                                            <a href="cetak_kpr.php?id=<?= $k['id_pengajuan'] ?>" target="_blank" class="btn btn-outline btn-sm" style="width: 100%; justify-content: center; font-weight: 800; font-size: 11px; border-color: #64748b; color: #475569; display: inline-flex; align-items: center; gap: 4px;">
+                                                📄 Cetak Laporan
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>

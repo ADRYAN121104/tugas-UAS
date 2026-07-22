@@ -23,7 +23,7 @@ function sidebar_admin($aktif = 'dashboard') {
     ?>
     <aside class="sidebar" id="sidebar">
         <a href="<?= $base ?>admin/dashboard.php" class="sb-brand">
-            <div class="sb-brand-icon">🏠</div>
+            <div class="sb-brand-icon"><img src="<?= $base ?>assets/images/logo/logo.png" alt="Logo" style="width:36px;height:36px;object-fit:contain;"></div>
             <div class="sb-brand-text">
                 <strong>RumahKPR</strong>
                 <small>Panel Admin</small>
